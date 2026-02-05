@@ -1,0 +1,40 @@
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment variables
+.env
+*.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+.env/
+
+# Flutter/Android/iOS build artifacts
+build/
+**/build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+android/**/generated/
+android/app/debug/
+android/app/profile/
+android/app/release/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
