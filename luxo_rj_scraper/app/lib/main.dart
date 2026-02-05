@@ -4,10 +4,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await Supabase.initialize(
-    url: 'https://<seu-projeto>.supabase.co',
-    anonKey: '<sua-anon-key>',
+    url: 'https://vfuhzvyfdivnmrlijtfi.supabase.co',
+    anonKey: 'sb_publishable_eLUkti4w2kQDJu6kCQVrpA_4Pr7xt3H',
   );
 
   runApp(const MyApp());
@@ -20,10 +20,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Growth Imobiliário',
-      theme: ThemeData(
-        primarySwatch: Colors.indigo,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(primarySwatch: Colors.indigo, useMaterial3: true),
       home: const LeadsPage(),
     );
   }
@@ -54,13 +51,17 @@ class _LeadsPageState extends State<LeadsPage> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-             // Fallback for demo when no connection
-             return const Center(child: Text('Erro na conexão ou sem dados (Demo Mode)'));
+            // Fallback for demo when no connection
+            return const Center(
+              child: Text('Erro na conexão ou sem dados (Demo Mode)'),
+            );
           }
-          
+
           final leads = snapshot.data ?? [];
-          final activeLeads = leads.where((l) => l['contatado'] == false).toList();
-          
+          final activeLeads = leads
+              .where((l) => l['contatado'] == false)
+              .toList();
+
           if (activeLeads.isEmpty) {
             return const Center(child: Text('Nenhum lead pendente! 🚀'));
           }
@@ -76,17 +77,26 @@ class _LeadsPageState extends State<LeadsPage> {
                     backgroundColor: Colors.amber,
                     child: Text('${lead['lux_score'] ?? '?'}'),
                   ),
-                  title: Text(lead['titulo'] ?? 'Imóvel sem Nome', maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text("${lead['bairro'] ?? 'RJ'} • R\$ ${lead['preco_noite']}"),
+                  title: Text(
+                    lead['titulo'] ?? 'Imóvel sem Nome',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    "${lead['bairro'] ?? 'RJ'} • R\$ ${lead['preco_noite']}",
+                  ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                       IconButton(
-                        icon: const Icon(Icons.whatsapp, color: Colors.green),
+                      IconButton(
+                        icon: const Icon(Icons.chat, color: Colors.green),
                         onPressed: () => _openWhatsApp(lead),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.check_circle, color: Colors.blue),
+                        icon: const Icon(
+                          Icons.check_circle,
+                          color: Colors.blue,
+                        ),
                         onPressed: () => _markAsContacted(lead['id']),
                       ),
                     ],
@@ -106,20 +116,24 @@ class _LeadsPageState extends State<LeadsPage> {
           .from('leads')
           .update({'contatado': true})
           .eq('id', id);
-    } catch(e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro: $e')));
     }
   }
 
   Future<void> _openWhatsApp(Map<String, dynamic> lead) async {
     final phone = lead['telefone'];
     if (phone == null) return;
-    
+
     // Simple filter for digits
-    final num = phone.replaceAll(RegExp(r'[^0-9]'), ''); 
-    final message = Uri.encodeComponent("Olá, tenho interesse no seu imóvel ${lead['titulo']}!");
+    final num = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    final message = Uri.encodeComponent(
+      "Olá, tenho interesse no seu imóvel ${lead['titulo']}!",
+    );
     final url = Uri.parse("https://wa.me/$num?text=$message");
-    
+
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     }
