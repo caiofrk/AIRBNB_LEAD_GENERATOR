@@ -19,6 +19,7 @@ env/
 .env/
 
 # Flutter/Android/iOS build artifacts
+.gradle/
 build/
 **/build/
 .dart_tool/
