@@ -1,0 +1,1 @@
+includeBuild("luxo_rj_scraper/app/android")
