@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.app"
+    namespace = "com.example.airbnb_lead_generator"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.app"
+        applicationId = "com.example.airbnb_lead_generator"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
