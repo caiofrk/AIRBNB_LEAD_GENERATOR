@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:ui';
+import 'package:intl/intl.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +22,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Luxury Leads RJ',
+      title: 'Leads de Luxo RJ',
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF0F172A),
@@ -43,6 +44,8 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   final _client = Supabase.instance.client;
+  String _searchQuery = '';
+  final _currencyFormat = NumberFormat.simpleCurrency(locale: 'pt_BR');
 
   Stream<List<Map<String, dynamic>>> get _leadsStream => _client
       .from('leads')
@@ -61,8 +64,31 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ),
         child: SafeArea(
-          child: CustomScrollView(
-            slivers: [_buildAppBar(), _buildStatsSummary(), _buildLeadsList()],
+          child: StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _leadsStream,
+            builder: (context, snapshot) {
+              final allLeads = snapshot.data ?? [];
+              final filteredLeads = allLeads.where((l) {
+                final matchSearch =
+                    (l['titulo'] ?? '').toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    ) ||
+                    (l['bairro'] ?? '').toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    );
+                final isNotContacted = l['contatado'] == false;
+                return matchSearch && isNotContacted;
+              }).toList();
+
+              return CustomScrollView(
+                slivers: [
+                  _buildAppBar(),
+                  _buildSearchBox(),
+                  _buildStatsSummary(allLeads),
+                  _buildLeadsList(snapshot, filteredLeads),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -72,15 +98,15 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _buildAppBar() {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Luxury Leads',
+                const Text(
+                  'Leads de Luxo',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -89,7 +115,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
                 Text(
-                  'Rio de Janeiro Market',
+                  'Mercado do Rio de Janeiro',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.white.withOpacity(0.6),
@@ -97,34 +123,79 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ],
             ),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.notifications_outlined,
-                  color: Colors.white,
-                ),
-                onPressed: () {},
-              ),
-            ),
+            _buildProfileIcon(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatsSummary() {
+  Widget _buildProfileIcon() {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+        ),
+        shape: BoxShape.circle,
+      ),
+      child: const CircleAvatar(
+        radius: 20,
+        backgroundColor: Color(0xFF1E293B),
+        child: Icon(Icons.person_outline, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildSearchBox() {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: TextField(
+            onChanged: (value) => setState(() => _searchQuery = value),
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Buscar imóveis ou bairros...',
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+              prefixIcon: Icon(
+                Icons.search,
+                color: Colors.white.withOpacity(0.3),
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(vertical: 15),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsSummary(List<Map<String, dynamic>> leads) {
+    if (leads.isEmpty) return const SliverToBoxAdapter(child: SizedBox());
+
+    final totalValue = leads.fold<double>(
+      0,
+      (sum, l) => sum + (l['preco_noite'] ?? 0),
+    );
+    final qualifiedCount = leads
+        .where((l) => (l['lux_score'] ?? 0) >= 80)
+        .length;
+    final totalLeads = leads.length;
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12),
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [const Color(0xFF6366F1), const Color(0xFFA855F7)],
+            gradient: const LinearGradient(
+              colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
             ),
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
@@ -138,16 +209,22 @@ class _DashboardPageState extends State<DashboardPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildStatItem('Total Leads', '124'),
+              _buildStatItem('Total Leads', '$totalLeads'),
               _buildStatDivider(),
-              _buildStatItem('Qualified', '85%'),
+              _buildStatItem('Qualificados', '$qualifiedCount'),
               _buildStatDivider(),
-              _buildStatItem('Revenue', 'R\$ 2.4M'),
+              _buildStatItem('Volume', _formatVolume(totalValue)),
             ],
           ),
         ),
       ),
     );
+  }
+
+  String _formatVolume(double value) {
+    if (value >= 1000000) return 'R\$ ${(value / 1000000).toStringAsFixed(1)}M';
+    if (value >= 1000) return 'R\$ ${(value / 1000).toStringAsFixed(0)}k';
+    return 'R\$ ${value.toStringAsFixed(0)}';
   }
 
   Widget _buildStatItem(String label, String value) {
@@ -177,118 +254,109 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildLeadsList() {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _leadsStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SliverFillRemaining(
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
+  Widget _buildLeadsList(
+    AsyncSnapshot<List<Map<String, dynamic>>> snapshot,
+    List<Map<String, dynamic>> displayLeads,
+  ) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const SliverFillRemaining(
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-        final dbLeads = snapshot.data ?? [];
-        final activeLeads = dbLeads
-            .where((l) => l['contatado'] == false)
-            .toList();
+    if (snapshot.hasError) {
+      return _buildEmptyState(true);
+    }
 
-        // High-end Preview Data if no real leads exist yet
-        final displayLeads = activeLeads.isNotEmpty
-            ? activeLeads
-            : [
-                {
-                  'id': '1',
-                  'titulo': 'Penthouse Ocean View - Ipanema',
-                  'bairro': 'Ipanema',
-                  'preco_noite': 4500,
-                  'lux_score': 98,
-                  'contatado': false,
-                  'telefone': '5521999999999',
-                },
-                {
-                  'id': '2',
-                  'titulo': 'Modern Mansion with Private Pool',
-                  'bairro': 'Joá',
-                  'preco_noite': 8200,
-                  'lux_score': 95,
-                  'contatado': false,
-                  'telefone': '5521999999999',
-                },
-                {
-                  'id': '3',
-                  'titulo': 'Designer Loft near Copacabana',
-                  'bairro': 'Copacabana',
-                  'preco_noite': 1200,
-                  'lux_score': 82,
-                  'contatado': false,
-                  'telefone': '5521999999999',
-                },
-              ];
+    final items = displayLeads.isNotEmpty ? displayLeads : _getMockData();
 
-        if (snapshot.hasError) {
-          return _buildEmptyState(true);
-        }
-
-        return SliverPadding(
-          padding: const EdgeInsets.all(24),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) => _buildLeadCard(displayLeads[index]),
-              childCount: displayLeads.length,
-            ),
-          ),
-        );
-      },
+    return SliverPadding(
+      padding: const EdgeInsets.all(24),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => _buildLeadCard(items[index]),
+          childCount: items.length,
+        ),
+      ),
     );
+  }
+
+  List<Map<String, dynamic>> _getMockData() {
+    return [
+      {
+        'id': '1',
+        'titulo': 'Cobertura Vista Mar - Ipanema',
+        'bairro': 'Ipanema',
+        'preco_noite': 4500,
+        'lux_score': 98,
+        'contatado': false,
+        'telefone': '5521999999999',
+        'email': 'contato@ipanemarentals.com',
+        'link_imovel': 'https://www.airbnb.com.br/rooms/11234567',
+      },
+      {
+        'id': '2',
+        'titulo': 'Mansão Moderna com Piscina Privativa',
+        'bairro': 'Joá',
+        'preco_noite': 8200,
+        'lux_score': 95,
+        'contatado': false,
+        'telefone': '5521999999999',
+        'link_imovel': 'https://www.airbnb.com.br/rooms/87654321',
+      },
+    ];
   }
 
   Widget _buildLeadCard(Map<String, dynamic> lead) {
     final score = lead['lux_score'] ?? 0;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                _buildScoreIndicator(score),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        lead['titulo'] ?? 'Premium Property',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+    return GestureDetector(
+      onTap: () => _showLeadDetails(lead),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  _buildScoreIndicator(score),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          lead['titulo'] ?? 'Imóvel Premium',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${lead['bairro'] ?? 'RJ'} • R\$ ${lead['preco_noite']}/night',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white.withOpacity(0.5),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${lead['bairro'] ?? 'RJ'} • ${_currencyFormat.format(lead['preco_noite'] ?? 0)}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                _buildActionButtons(lead),
-              ],
+                  const Icon(Icons.chevron_right, color: Colors.white24),
+                ],
+              ),
             ),
           ),
         ),
@@ -297,43 +365,177 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildScoreIndicator(int score) {
+    final color = score >= 90
+        ? Colors.amber
+        : score >= 70
+        ? Colors.indigoAccent
+        : Colors.blueGrey;
+
     return Container(
       width: 50,
       height: 50,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(
-          color: score > 80 ? Colors.amber : Colors.blue.withOpacity(0.5),
-          width: 2,
-        ),
+        border: Border.all(color: color.withOpacity(0.5), width: 2),
       ),
       child: Center(
         child: Text(
           '$score',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: score > 80 ? Colors.amber : Colors.blue,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: color),
         ),
       ),
     );
   }
 
-  Widget _buildActionButtons(Map<String, dynamic> lead) {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => _openWhatsApp(lead),
-          icon: const Icon(Icons.chat, color: Colors.greenAccent),
+  void _showLeadDetails(Map<String, dynamic> lead) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _buildDetailSheet(lead),
+    );
+  }
+
+  Widget _buildDetailSheet(Map<String, dynamic> lead) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      maxChildSize: 0.95,
+      builder: (_, controller) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0F172A),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
-        IconButton(
-          onPressed: () => _markAsContacted(lead['id']),
-          icon: const Icon(
-            Icons.check_circle_outline,
-            color: Color(0xFF6366F1),
-          ),
+        child: ListView(
+          controller: controller,
+          padding: const EdgeInsets.all(24),
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              lead['titulo'] ?? 'Detalhes do Imóvel',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${lead['bairro']} • RJ',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white.withOpacity(0.5),
+              ),
+            ),
+            const SizedBox(height: 24),
+            _buildDetailRow(
+              Icons.payments_outlined,
+              'Preço por noite',
+              _currencyFormat.format(lead['preco_noite'] ?? 0),
+            ),
+            _buildDetailRow(
+              Icons.auto_awesome,
+              'Score de Luxo',
+              '${lead['lux_score']}/100',
+            ),
+            _buildDetailRow(
+              Icons.person_outline,
+              'Anfitrião',
+              lead['anfitriao'] ?? 'N/A',
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'Ações do Lead',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            _buildActionButton(
+              Icons.chat_bubble_outline,
+              'Conversar no WhatsApp',
+              Colors.green,
+              () => _openWhatsApp(lead),
+            ),
+            const SizedBox(height: 12),
+            _buildActionButton(
+              Icons.email_outlined,
+              'Enviar E-mail',
+              Colors.blue,
+              () => _sendEmail(lead),
+            ),
+            const SizedBox(height: 12),
+            _buildActionButton(
+              Icons.travel_explore,
+              'Ver no Airbnb',
+              Colors.pinkAccent,
+              () => _openAirbnb(lead),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () {
+                _markAsContacted(lead['id']);
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white10,
+                minimumSize: const Size(double.infinity, 56),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: const Text('Marcar como Contatado'),
+            ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF6366F1), size: 20),
+          const SizedBox(width: 12),
+          Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5))),
+          const Spacer(),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton(
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -353,41 +555,18 @@ class _DashboardPageState extends State<DashboardPage> {
             const SizedBox(height: 24),
             Text(
               isError
-                  ? 'Database Connection Required'
-                  : 'Waiting for New Leads',
+                  ? 'Erro no Banco de Dados'
+                  : 'Nenhum resultado encontrado',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Text(
               isError
-                  ? 'Please ensure you have run the setup_db.py SQL in your Supabase Editor.'
-                  : 'The market is quiet right now. Run the scraper to find new opportunities in RJ.',
+                  ? 'Verifique os parâmetros de conexão do Supabase.'
+                  : 'Tente buscar por outro bairro ou nome de imóvel.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.white.withOpacity(0.5),
-              ),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () => setState(() {}),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6366F1),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: const Text('Retry Connection'),
+              style: TextStyle(color: Colors.white.withOpacity(0.5)),
             ),
           ],
         ),
@@ -397,11 +576,12 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _markAsContacted(dynamic id) async {
     try {
+      if (id is String && id.length < 5) return; // Ignore mock data IDs
       await _client.from('leads').update({'contatado': true}).eq('id', id);
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ).showSnackBar(SnackBar(content: Text('Erro: $e')));
     }
   }
 
@@ -409,21 +589,48 @@ class _DashboardPageState extends State<DashboardPage> {
     final phone = lead['telefone'];
     if (phone == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No phone number available for this lead.'),
-        ),
+        const SnackBar(content: Text('Número de telefone indisponível.')),
       );
       return;
     }
-
     final num = phone.replaceAll(RegExp(r'[^0-9]'), '');
     final message = Uri.encodeComponent(
-      "Hello! I saw your property ${lead['titulo']} and am interested in your luxury management services.",
+      "Olá! Vi seu imóvel ${lead['titulo']} e tenho interesse em seus serviços de gestão de luxo.",
     );
     final url = Uri.parse("https://wa.me/$num?text=$message");
+    if (await canLaunchUrl(url))
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+  }
 
+  Future<void> _sendEmail(Map<String, dynamic> lead) async {
+    final email = lead['email'];
+    if (email == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('E-mail indisponível.')));
+      return;
+    }
+    final url = Uri.parse(
+      "mailto:$email?subject=Interesse%20em%20Gerenciamento%20de%20Imóvel&body=Olá,%20tenho%20interesse%20em%20seu%20imóvel%20${lead['titulo']}",
+    );
+    if (await canLaunchUrl(url)) await launchUrl(url);
+  }
+
+  Future<void> _openAirbnb(Map<String, dynamic> lead) async {
+    final link = lead['link_imovel'];
+    if (link == null || link.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Link do Airbnb não disponível.')),
+      );
+      return;
+    }
+    final url = Uri.parse(link);
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível abrir o link.')),
+      );
     }
   }
 }
