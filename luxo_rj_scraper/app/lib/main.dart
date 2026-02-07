@@ -633,6 +633,7 @@ class _DashboardPageState extends State<DashboardPage> {
       if (id is String && id.length < 5) return; // Ignore mock data IDs
       await _client.from('leads').update({'contatado': true}).eq('id', id);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Erro: $e')));
@@ -682,6 +683,7 @@ class _DashboardPageState extends State<DashboardPage> {
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Não foi possível abrir o link.')),
       );
@@ -691,11 +693,7 @@ class _DashboardPageState extends State<DashboardPage> {
   void _showFilterSheet(List<Map<String, dynamic>> allLeads) {
     final bairros = [
       'Todos',
-      ...allLeads
-          .map((l) => l['bairro'] as String?)
-          .toSet()
-          .where((b) => b != null)
-          .cast<String>(),
+      ...allLeads.map((l) => l['bairro']).whereType<String>().toSet(),
     ];
 
     showModalBottomSheet(
