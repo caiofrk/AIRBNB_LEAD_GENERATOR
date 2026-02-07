@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:ui';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -80,13 +81,22 @@ class _DashboardPageState extends State<DashboardPage> {
                 return matchSearch && isNotContacted;
               }).toList();
 
-              return CustomScrollView(
-                slivers: [
-                  _buildAppBar(),
-                  _buildSearchBox(),
-                  _buildStatsSummary(allLeads),
-                  _buildLeadsList(snapshot, filteredLeads),
-                ],
+              return RefreshIndicator(
+                onRefresh: () async {
+                  setState(() {});
+                  await Future.delayed(const Duration(seconds: 1));
+                },
+                color: const Color(0xFF6366F1),
+                backgroundColor: const Color(0xFF1E293B),
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    _buildAppBar(),
+                    _buildSearchBox(),
+                    _buildStatsSummary(allLeads),
+                    _buildLeadsList(snapshot, filteredLeads),
+                  ],
+                ),
               );
             },
           ),
@@ -516,7 +526,7 @@ class _DashboardPageState extends State<DashboardPage> {
     Color color,
     VoidCallback onTap,
   ) {
-    return InkWell(
+    return _AnimatedPress(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -632,5 +642,45 @@ class _DashboardPageState extends State<DashboardPage> {
         const SnackBar(content: Text('Não foi possível abrir o link.')),
       );
     }
+  }
+}
+
+class _AnimatedPress extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+  const _AnimatedPress({required this.child, required this.onTap});
+  @override
+  State<_AnimatedPress> createState() => _AnimatedPressState();
+}
+
+class _AnimatedPressState extends State<_AnimatedPress> {
+  double _scale = 1.0;
+  void _onTapDown(TapDownDetails details) {
+    setState(() => _scale = 0.92);
+    HapticFeedback.lightImpact();
+  }
+
+  void _onTapUp(TapUpDetails details) {
+    setState(() => _scale = 1.0);
+  }
+
+  void _onTapCancel() {
+    setState(() => _scale = 1.0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: _onTapCancel,
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _scale,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeInOut,
+        child: widget.child,
+      ),
+    );
   }
 }

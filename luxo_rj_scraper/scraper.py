@@ -150,14 +150,26 @@ def scrape():
                            item.find('div', string=True)
                 title = title_el.get_text(strip=True) if title_el else "Imóvel de Luxo"
 
-                # Preço
-                price_el = item.select_one('span._1y74z6') or \
-                           item.select_one('div._1jo4h9u') or \
-                           item.find('span', string=lambda x: x and 'R$' in x)
-                
+                # Preço - Lógica melhorada para capturar o valor POR NOITE
+                price_el = item.select_one('div[data-testid="price-availability-row"] span div span') or \
+                           item.select_one('span[data-testid="price-and-discounted-price"] span') or \
+                           item.select_one('span._1y74z6') or \
+                           item.select_one('div._1jo4h9u')
+
+                # Se não achou pelos seletores conhecidos, tenta buscar qualquer texto com R$ mas evita o "total"
+                if not price_el:
+                    spans = item.find_all('span', string=lambda x: x and 'R$' in x)
+                    for s in spans:
+                        txt = s.get_text().lower()
+                        if 'noite' in txt or 'night' in txt:
+                            price_el = s
+                            break
+                    if not price_el and spans:
+                        price_el = spans[0]
+
                 price_text = price_el.get_text(strip=True) if price_el else "1000"
                 # Limpa string de preço (ex: "R$ 1.500" -> 1500)
-                price_digits = ''.join(filter(str.isdigit, price_text.replace('.', '').replace(',', '')))
+                price_digits = ''.join(filter(str.isdigit, price_text.split(',')[0].replace('.', '')))
                 price = int(price_digits) if price_digits else 1000
                 
                 # Link
