@@ -109,8 +109,13 @@ def enrich_lead(lead_id, data):
 def scrape():
     print("--- Starting Airbnb Scraper (Rio de Janeiro / Luxo) ---")
     
-    # Filtros: Rio, Preço Bruto, Casas Inteiras
-    url = "https://www.airbnb.com.br/s/Rio-de-Janeiro--RJ/homes?tab_id=home_tab&refinement_paths%5B%5D=%2Fhomes&price_min=1000&room_types%5B%5D=Entire+home%2Fapt"
+    # Set fixed future dates for a 2-night stay to get "Real" pricing (including fees)
+    checkin = "2026-06-11"
+    checkout = "2026-06-13"
+    num_nights = 2
+    
+    # Filtros: Rio, Preço Bruto, Casas Inteiras + Real Dates
+    url = f"https://www.airbnb.com.br/s/Rio-de-Janeiro--RJ/homes?tab_id=home_tab&refinement_paths%5B%5D=%2Fhomes&price_min=1000&room_types%5B%5D=Entire+home%2Fapt&checkin={checkin}&checkout={checkout}"
     
     options = Options()
     options.add_argument("--headless=new")
@@ -150,27 +155,22 @@ def scrape():
                            item.find('div', string=True)
                 title = title_el.get_text(strip=True) if title_el else "Imóvel de Luxo"
 
-                # Preço - Lógica melhorada para capturar o valor POR NOITE
-                price_el = item.select_one('div[data-testid="price-availability-row"] span div span') or \
-                           item.select_one('span[data-testid="price-and-discounted-price"] span') or \
-                           item.select_one('span._1y74z6') or \
-                           item.select_one('div._1jo4h9u')
-
-                # Se não achou pelos seletores conhecidos, tenta buscar qualquer texto com R$ mas evita o "total"
-                if not price_el:
-                    spans = item.find_all('span', string=lambda x: x and 'R$' in x)
-                    for s in spans:
-                        txt = s.get_text().lower()
-                        if 'noite' in txt or 'night' in txt:
-                            price_el = s
-                            break
-                    if not price_el and spans:
-                        price_el = spans[0]
-
-                price_text = price_el.get_text(strip=True) if price_el else "1000"
-                # Limpa string de preço (ex: "R$ 1.500" -> 1500)
-                price_digits = ''.join(filter(str.isdigit, price_text.split(',')[0].replace('.', '')))
-                price = int(price_digits) if price_digits else 1000
+                # Lógica de Preço Real: Buscar o TOTAL da estadia e dividir pelas noites
+                # Isso captura o valor final que o hóspede paga (com taxas inclusas)
+                total_price_el = item.find('span', string=lambda x: x and 'total' in x.lower()) or \
+                                 item.select_one('div[data-testid="price-availability-row"] > div > span:last-child')
+                
+                if total_price_el and 'total' in total_price_el.get_text().lower():
+                    price_text = total_price_el.get_text(strip=True)
+                    price_digits = ''.join(filter(str.isdigit, price_text.split(',')[0].replace('.', '')))
+                    price = int(int(price_digits) / num_nights) if price_digits else 1000
+                else:
+                    # Fallback para o preço por noite exibido se o total não for encontrado
+                    price_el = item.select_one('div[data-testid="price-availability-row"] span div span') or \
+                               item.select_one('span[data-testid="price-and-discounted-price"] span')
+                    price_text = price_el.get_text(strip=True) if price_el else "1000"
+                    price_digits = ''.join(filter(str.isdigit, price_text.split(',')[0].replace('.', '')))
+                    price = int(price_digits) if price_digits else 1000
                 
                 # Link
                 link_el = item.find('a', href=True)

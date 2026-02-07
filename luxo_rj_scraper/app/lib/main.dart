@@ -46,12 +46,12 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   final _client = Supabase.instance.client;
   String _searchQuery = '';
+  String _sortBy = 'score'; // 'score', 'price_asc', 'price_desc', 'newest'
+  String _selectedBairro = 'Todos';
   final _currencyFormat = NumberFormat.simpleCurrency(locale: 'pt_BR');
 
-  Stream<List<Map<String, dynamic>>> get _leadsStream => _client
-      .from('leads')
-      .stream(primaryKey: ['id'])
-      .order('lux_score', ascending: false);
+  Stream<List<Map<String, dynamic>>> get _leadsStream =>
+      _client.from('leads').stream(primaryKey: ['id']);
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +69,9 @@ class _DashboardPageState extends State<DashboardPage> {
             stream: _leadsStream,
             builder: (context, snapshot) {
               final allLeads = snapshot.data ?? [];
-              final filteredLeads = allLeads.where((l) {
+
+              // Apply Filtering
+              var filteredLeads = allLeads.where((l) {
                 final matchSearch =
                     (l['titulo'] ?? '').toLowerCase().contains(
                       _searchQuery.toLowerCase(),
@@ -77,9 +79,42 @@ class _DashboardPageState extends State<DashboardPage> {
                     (l['bairro'] ?? '').toLowerCase().contains(
                       _searchQuery.toLowerCase(),
                     );
+                final matchBairro =
+                    _selectedBairro == 'Todos' ||
+                    (l['bairro'] ?? '') == _selectedBairro;
                 final isNotContacted = l['contatado'] == false;
-                return matchSearch && isNotContacted;
+                return matchSearch && matchBairro && isNotContacted;
               }).toList();
+
+              // Apply Sorting
+              switch (_sortBy) {
+                case 'score':
+                  filteredLeads.sort(
+                    (a, b) =>
+                        (b['lux_score'] ?? 0).compareTo(a['lux_score'] ?? 0),
+                  );
+                  break;
+                case 'price_asc':
+                  filteredLeads.sort(
+                    (a, b) => (a['preco_noite'] ?? 0).compareTo(
+                      b['preco_noite'] ?? 0,
+                    ),
+                  );
+                  break;
+                case 'price_desc':
+                  filteredLeads.sort(
+                    (a, b) => (b['preco_noite'] ?? 0).compareTo(
+                      a['preco_noite'] ?? 0,
+                    ),
+                  );
+                  break;
+                case 'newest':
+                  filteredLeads.sort(
+                    (a, b) =>
+                        (b['criado_em'] ?? '').compareTo(a['criado_em'] ?? ''),
+                  );
+                  break;
+              }
 
               return RefreshIndicator(
                 onRefresh: () async {
@@ -92,7 +127,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
                     _buildAppBar(),
-                    _buildSearchBox(),
+                    _buildSearchBox(allLeads),
                     _buildStatsSummary(allLeads),
                     _buildLeadsList(snapshot, filteredLeads),
                   ],
@@ -157,7 +192,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildSearchBox() {
+  Widget _buildSearchBox(List<Map<String, dynamic>> allLeads) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12),
@@ -176,6 +211,15 @@ class _DashboardPageState extends State<DashboardPage> {
               prefixIcon: Icon(
                 Icons.search,
                 color: Colors.white.withOpacity(0.3),
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  Icons.tune,
+                  color: (_selectedBairro != 'Todos' || _sortBy != 'score')
+                      ? const Color(0xFF6366F1)
+                      : Colors.white.withOpacity(0.3),
+                ),
+                onPressed: () => _showFilterSheet(allLeads),
               ),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(vertical: 15),
@@ -642,6 +686,162 @@ class _DashboardPageState extends State<DashboardPage> {
         const SnackBar(content: Text('Não foi possível abrir o link.')),
       );
     }
+  }
+
+  void _showFilterSheet(List<Map<String, dynamic>> allLeads) {
+    final bairros = [
+      'Todos',
+      ...allLeads
+          .map((l) => l['bairro'] as String?)
+          .toSet()
+          .where((b) => b != null)
+          .cast<String>(),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF0F172A),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Filtros e Ordenação',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _sortBy = 'score';
+                        _selectedBairro = 'Todos';
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Limpar'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Ordenar por',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white70,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                children: [
+                  _buildFilterChip(
+                    'Qualidade',
+                    'score',
+                    _sortBy,
+                    (val) => setState(() => _sortBy = val),
+                    setModalState,
+                  ),
+                  _buildFilterChip(
+                    'Menor Preço',
+                    'price_asc',
+                    _sortBy,
+                    (val) => setState(() => _sortBy = val),
+                    setModalState,
+                  ),
+                  _buildFilterChip(
+                    'Maior Preço',
+                    'price_desc',
+                    _sortBy,
+                    (val) => setState(() => _sortBy = val),
+                    setModalState,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Bairros',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white70,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 40,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: bairros
+                      .map(
+                        (b) => Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: _buildFilterChip(
+                            b,
+                            b,
+                            _selectedBairro,
+                            (val) => setState(() => _selectedBairro = val),
+                            setModalState,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'Aplicar Filtros',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(
+    String label,
+    String value,
+    String current,
+    Function(String) onSelect,
+    StateSetter setModalState,
+  ) {
+    final isSelected = value == current;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        if (selected) {
+          onSelect(value);
+          setModalState(() {});
+        }
+      },
+      selectedColor: const Color(0xFF6366F1),
+      labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.white70),
+      backgroundColor: Colors.white.withOpacity(0.05),
+      showCheckmark: false,
+    );
   }
 }
 
