@@ -86,26 +86,31 @@ class _DashboardPageState extends State<DashboardPage> {
                 return matchSearch && matchBairro && isNotContacted;
               }).toList();
 
-              // 3. APPLY PERCENTILE RANKING
-              // We calculate how many properties each lead is "better" than.
-              List<double> rawScores = allLeads
-                  .map((l) => (l['lux_score'] as num?)?.toDouble() ?? 0.0)
-                  .toList();
-              rawScores.sort();
+              // 3. APPLY "THE EQUATION" (Luxury Rate)
+              // N = Total number of leads
+              // Rank = Position when sorted by Price (High to Low)
+              List<Map<String, dynamic>> priceSorted = List.from(allLeads);
+              priceSorted.sort(
+                (a, b) => ((b['preco_noite'] as num?)?.toDouble() ?? 0.0)
+                    .compareTo((a['preco_noite'] as num?)?.toDouble() ?? 0.0),
+              );
 
-              int totalCount = rawScores.length;
+              int N = allLeads.length;
               for (var l in filteredLeads) {
-                final raw = (l['lux_score'] as num?)?.toDouble() ?? 0.0;
+                final price = (l['preco_noite'] as num?)?.toDouble() ?? 0.0;
+                // Find rank (Position in the price-sorted list)
+                int rank =
+                    priceSorted.indexWhere(
+                      (item) =>
+                          ((item['preco_noite'] as num?)?.toDouble() ?? 0.0) ==
+                          price,
+                    ) +
+                    1;
 
-                // Find rank (how many scores are <= raw)
-                int rank = rawScores.where((s) => s <= raw).length;
+                // Luxury Rate = ((N - Rank + 1) / N) * 100
+                double rate = N > 0 ? ((N - rank + 1) / N) * 100.0 : 0.0;
 
-                // Percentile calculation
-                double percentile = totalCount > 1
-                    ? (rank / totalCount) * 100.0
-                    : 100.0;
-
-                l['relative_score'] = percentile;
+                l['relative_score'] = rate;
               }
 
               // Apply Sorting (using normalized score)
