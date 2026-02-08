@@ -72,17 +72,51 @@ def deep_analyze_listing(driver, lead_id, url):
                 found_maintenance.append(label)
         updates['maintenance_items'] = found_maintenance
 
-        # 3. Cleanliness Gap (Scanning Reviews)
-        flags = ['poeira', 'sujo', 'limpeza', 'dust', 'dirty', 'mancha', 'odor', 'baseboard', 'rodapé', 'fingerprint']
+        # 3. Cleanliness Gap (Focused on reviews <= 4 stars)
+        flags = ['poeira', 'sujo', 'limpeza', 'dust', 'dirty', 'mancha', 'odor', 'baseboard', 'rodapé', 'fingerprint', 'suja', 'manchada']
         gap_mentions = []
-        review_els = soup.select('div[data-testid="pdp-reviews-modal-scrollable-container"] span, span.ll4r2nl')
-        for r in review_els:
-            txt = r.get_text().lower()
-            if any(f in txt for f in flags):
-                gap_mentions.append(txt[:100].strip())
+
+        # Try to open the reviews modal to get more data (including those rare <= 4 star reviews)
+        try:
+            show_all_btn = driver.find_element(By.CSS_SELECTOR, 'button[data-testid="pdp-show-all-reviews-button"]')
+            driver.execute_script("arguments[0].click();", show_all_btn)
+            time.sleep(3)
+            # Update soup with modal content
+            soup = BeautifulSoup(driver.page_source, 'html.parser')
+        except:
+            pass # Fallback to what's visible on the page
+
+        # Find individual review elements
+        # Airbnb usually groups reviews in cards
+        review_cards = soup.select('div[data-review-id], div[data-testid="pdp-review-card-content"]')
+        
+        for card in review_cards:
+            try:
+                # Find rating: Airbnb uses aria-label like "Avaliado com 4 de 5 estrelas"
+                rating = 5 # Default to 5
+                rating_el = card.select_one('span[aria-label*="estrela"], span[aria-label*="star"]')
+                if rating_el:
+                    label = rating_el.get('aria-label', '').lower()
+                    # Extract the first digit (the rating)
+                    match = re.search(r'(\d)', label)
+                    if match:
+                        rating = int(match.group(1))
+
+                # User requirement: Ignore 5-star reviews
+                if rating <= 4:
+                    # Get the text of this specific review
+                    review_text_el = card.select_one('span._163atp1, div[data-testid="pdp-review-description"]')
+                    if review_text_el:
+                        txt = review_text_el.get_text().lower()
+                        if any(f in txt for f in flags):
+                            # Prepend rating to show context in the app
+                            gap_mentions.append(f"({rating}*): {txt[:80].strip()}...")
+            except:
+                continue
         
         if gap_mentions:
-            updates['cleanliness_gap'] = " | ".join(list(set(gap_mentions))[:2])
+            updates['cleanliness_gap'] = " | ".join(list(set(gap_mentions))[:3])
+            print(f"      [!] Found {len(gap_mentions)} critical reviews.")
 
         # 4. Host Info
         host_profile = soup.select_one('div[data-testid="pdp-host-profile-section"]')
