@@ -86,18 +86,26 @@ class _DashboardPageState extends State<DashboardPage> {
                 return matchSearch && matchBairro && isNotContacted;
               }).toList();
 
-              // 3. APPLY DYNAMIC RELATIVE SCORING
-              // We find the max absolute score and normalize everyone against it.
-              double maxRaw = 0.1;
-              for (var l in allLeads) {
-                final raw = (l['lux_score'] as num?)?.toDouble() ?? 0.0;
-                if (raw > maxRaw) maxRaw = raw;
-              }
+              // 3. APPLY PERCENTILE RANKING
+              // We calculate how many properties each lead is "better" than.
+              List<double> rawScores = allLeads
+                  .map((l) => (l['lux_score'] as num?)?.toDouble() ?? 0.0)
+                  .toList();
+              rawScores.sort();
 
-              // This ensures the "best" property in your current list is ALWAYS 100.
+              int totalCount = rawScores.length;
               for (var l in filteredLeads) {
                 final raw = (l['lux_score'] as num?)?.toDouble() ?? 0.0;
-                l['relative_score'] = (raw / maxRaw) * 100.0;
+
+                // Find rank (how many scores are <= raw)
+                int rank = rawScores.where((s) => s <= raw).length;
+
+                // Percentile calculation
+                double percentile = totalCount > 1
+                    ? (rank / totalCount) * 100.0
+                    : 100.0;
+
+                l['relative_score'] = percentile;
               }
 
               // Apply Sorting (using normalized score)
