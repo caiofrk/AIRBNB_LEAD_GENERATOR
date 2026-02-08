@@ -17,7 +17,8 @@ Este aplicativo foi desenvolvido para transformar a prospecção de imóveis de 
     - **Análise de Portfólio**: Identifica se o host é um profissional (múltiplos imóveis) ou proprietário solo.
 5.  **Pitch Generator Dinâmico**: Gera automaticamente um rascunho de e-mail (ou WhatsApp futuramente) personalizado, citando os problemas específicos encontrados no imóvel para aumentar a conversão.
 6.  **Rastreamento de Recência**: Exibição em tempo real de quanto tempo atrás o lead foi descoberto (ex: "Há 2h", "Há 1d"), permitindo priorizar os imóveis mais novos.
-7.  **Infraestrutura Híbrida**: Funciona de forma reativa com Supabase Realtime. Atualizações feitas no PC aparecem instantaneamente no celular.
+7.  **Relatório de Combate (IA)**: Integração com Gemini 1.5 Flash para gerar automaticamente um resumo de "Pontos de Dor" e "Ganchos de Venda" para cada imóvel.
+8.  **Infraestrutura Híbrida**: Funciona de forma reativa com Supabase Realtime. Atualizações feitas no PC aparecem instantaneamente no celular.
 
 ---
 

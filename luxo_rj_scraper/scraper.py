@@ -10,6 +10,7 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from supabase import create_client, Client
 from dotenv import load_dotenv
+import google.generativeai as genai
 
 # Load environment variables
 load_dotenv()
@@ -37,6 +38,43 @@ try:
 except Exception as e:
     print(f"❌ ERROR: Supabase connection failed: {e}")
     exit(1)
+
+# Initialize Gemini
+if GOOGLE_API_KEY:
+    try:
+        genai.configure(api_key=GOOGLE_API_KEY)
+        print("✅ Gemini AI initialized.")
+    except Exception as e:
+        print(f"⚠️ Warning: Gemini initialization failed: {e}")
+else:
+    print("⚠️ Warning: GOOGLE_API key missing. AI intelligence will be skipped.")
+
+def get_ai_intelligence(description, reviews):
+    """Uses Gemini 1.5 Flash (Free Tier) to generate a concise sales 'Combat Report'."""
+    if not GOOGLE_API_KEY:
+        return None
+    
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        # We limit context to avoid token issues on free tier and keep it fast
+        prompt = f"""
+        Você é um analista sênior de hospitalidade de luxo. 
+        Analise a descrição e as avaliações deste imóvel no Airbnb e crie um 'Relatório de Combate' para um vendedor.
+        
+        DESCRIÇÃO: {description[:1500]}
+        AVALIAÇÕES RECENTES: {reviews[:1500]}
+        
+        Siga exatamente este formato:
+        - DOR: [A maior falha encontrada: limpeza, manutenção ou gestão?]
+        - GANCHO: [Um argumento curto e matador em Português para convencer o dono a mudar de gestão]
+        
+        Seja direto e use um tom profissional porem persuasivo. Máximo 3 linhas no total.
+        """
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        print(f"      [!] Gemini Error: {e}")
+        return None
 
 def get_lux_score(price, title, photos_count, badges=None):
     # 1. Price Component (Max 50 pts) - Linear scale up to R$ 10.000
@@ -138,6 +176,13 @@ def deep_analyze_listing(driver, lead_id, url):
             txt = host_profile.get_text().lower()
             m = re.search(r'(\d+)\s+anúncios', txt)
             updates['host_portfolio_size'] = int(m.group(1)) if m else 1
+
+        # 5. AI Sales Intelligence (Gemini)
+        print("      [AI] Generating Combat Report...")
+        all_reviews_text = " | ".join(gap_mentions)
+        ai_report = get_ai_intelligence(description, all_reviews_text)
+        if ai_report:
+            updates['ai_report'] = ai_report
 
         if supabase:
             supabase.table("leads").update(updates).eq("id", lead_id).execute()

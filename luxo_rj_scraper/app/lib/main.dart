@@ -694,6 +694,13 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               const SizedBox(height: 16),
               if (lead['intelligence_status'] == 'ready') ...[
+                if (lead['ai_report'] != null)
+                  _buildIntelligenceCard(
+                    Icons.psychology_outlined,
+                    'Relatório de Combate (IA)',
+                    lead['ai_report'],
+                    const Color(0xFFA855F7),
+                  ),
                 if (lead['cleanliness_gap'] != null)
                   _buildIntelligenceCard(
                     Icons.warning_amber_rounded,
