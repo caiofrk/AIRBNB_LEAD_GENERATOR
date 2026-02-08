@@ -128,12 +128,73 @@ class _DashboardPageState extends State<DashboardPage> {
                   slivers: [
                     _buildAppBar(),
                     _buildSearchBox(allLeads),
-                    _buildStatsSummary(allLeads),
+                    _buildStatsSummary(filteredLeads),
+                    _buildQuickSortBar(),
                     _buildLeadsList(snapshot, filteredLeads),
                   ],
                 ),
               );
             },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickSortBar() {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSortButton('Luxury Score', 'score', Icons.auto_awesome),
+            _buildSortButton('Preço', 'price_desc', Icons.payments_outlined),
+            _buildSortButton('Data/Hora', 'newest', Icons.schedule),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSortButton(String label, String value, IconData icon) {
+    final bool isActive = _sortBy == value;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() => _sortBy = value);
+          HapticFeedback.lightImpact();
+        },
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isActive
+                ? const Color(0xFF6366F1)
+                : Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isActive ? Colors.white24 : Colors.white.withOpacity(0.1),
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: isActive ? Colors.white : Colors.white70,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  color: isActive ? Colors.white : Colors.white70,
+                ),
+              ),
+            ],
           ),
         ),
       ),
