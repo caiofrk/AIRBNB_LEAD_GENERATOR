@@ -10,7 +10,7 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from supabase import create_client, Client
 from dotenv import load_dotenv
-import google.generativeai as genai
+from google import genai
 
 # Load environment variables
 load_dotenv()
@@ -39,23 +39,23 @@ except Exception as e:
     print(f"❌ ERROR: Supabase connection failed: {e}")
     exit(1)
 
-# Initialize Gemini
+# Initialize Gemini Client
+ai_client = None
 if GOOGLE_API_KEY:
     try:
-        genai.configure(api_key=GOOGLE_API_KEY)
-        print("✅ Gemini AI initialized.")
+        ai_client = genai.Client(api_key=GOOGLE_API_KEY)
+        print("✅ Gemini AI (New SDK) initialized.")
     except Exception as e:
         print(f"⚠️ Warning: Gemini initialization failed: {e}")
 else:
     print("⚠️ Warning: GOOGLE_API key missing. AI intelligence will be skipped.")
 
 def get_ai_intelligence(description, reviews):
-    """Uses Gemini 1.5 Flash (Free Tier) to generate a concise sales 'Combat Report'."""
-    if not GOOGLE_API_KEY:
+    """Uses Gemini 1.5 Flash (New SDK) to generate a concise sales 'Combat Report'."""
+    if not ai_client:
         return None
     
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
         # We limit context to avoid token issues on free tier and keep it fast
         prompt = f"""
         Você é um analista sênior de hospitalidade de luxo. 
@@ -70,7 +70,10 @@ def get_ai_intelligence(description, reviews):
         
         Seja direto e use um tom profissional porem persuasivo. Máximo 3 linhas no total.
         """
-        response = model.generate_content(prompt)
+        response = ai_client.models.generate_content(
+            model='gemini-2.0-flash-lite',
+            contents=prompt
+        )
         return response.text.strip()
     except Exception as e:
         print(f"      [!] Gemini Error: {e}")
