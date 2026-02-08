@@ -51,33 +51,39 @@ else:
     print("⚠️ Warning: GOOGLE_API key missing. AI intelligence will be skipped.")
 
 def get_ai_intelligence(description, reviews):
-    """Uses Gemini 1.5 Flash (New SDK) to generate a concise sales 'Combat Report'."""
+    """Uses Gemini 1.5 Flash (New SDK) with retry logic to handle free tier quotas."""
     if not ai_client:
         return None
     
-    try:
-        # We limit context to avoid token issues on free tier and keep it fast
-        prompt = f"""
-        Você é um analista sênior de hospitalidade de luxo. 
-        Analise a descrição e as avaliações deste imóvel no Airbnb e crie um 'Relatório de Combate' para um vendedor.
-        
-        DESCRIÇÃO: {description[:1500]}
-        AVALIAÇÕES RECENTES: {reviews[:1500]}
-        
-        Siga exatamente este formato:
-        - DOR: [A maior falha encontrada: limpeza, manutenção ou gestão?]
-        - GANCHO: [Um argumento curto e matador em Português para convencer o dono a mudar de gestão]
-        
-        Seja direto e use um tom profissional porem persuasivo. Máximo 3 linhas no total.
-        """
-        response = ai_client.models.generate_content(
-            model='gemini-2.0-flash-lite',
-            contents=prompt
-        )
-        return response.text.strip()
-    except Exception as e:
-        print(f"      [!] Gemini Error: {e}")
-        return None
+    prompt = f"""
+    Você é um analista sênior de hospitalidade de luxo. 
+    Analise a descrição e as avaliações deste imóvel no Airbnb e crie um 'Relatório de Combate' para um vendedor.
+    
+    DESCRIÇÃO: {description[:1500]}
+    AVALIAÇÕES RECENTES: {reviews[:1500]}
+    
+    Siga exatamente este formato:
+    - DOR: [A maior falha encontrada: limpeza, manutenção ou gestão?]
+    - GANCHO: [Um argumento curto e matador em Português para convencer o dono a mudar de gestão]
+    
+    Seja direto e use um tom profissional porem persuasivo. Máximo 3 linhas no total.
+    """
+
+    for attempt in range(3):
+        try:
+            response = ai_client.models.generate_content(
+                model='gemini-2.0-flash-lite',
+                contents=prompt
+            )
+            return response.text.strip()
+        except Exception as e:
+            if "429" in str(e):
+                print(f"      [AI] Quota hit (429). Retry {attempt+1}/3 in 10s...")
+                time.sleep(10)
+                continue
+            print(f"      [!] Gemini Error: {e}")
+            break
+    return None
 
 def get_lux_score(price, title, photos_count, badges=None):
     # 1. Price Component (Max 50 pts) - Linear scale up to R$ 10.000
