@@ -86,31 +86,27 @@ class _DashboardPageState extends State<DashboardPage> {
                 return matchSearch && matchBairro && isNotContacted;
               }).toList();
 
-              // 3. APPLY "THE EQUATION" (Luxury Rate)
-              // N = Total number of leads
-              // Rank = Position when sorted by Price (High to Low)
-              List<Map<String, dynamic>> priceSorted = List.from(allLeads);
-              priceSorted.sort(
-                (a, b) => ((b['preco_noite'] as num?)?.toDouble() ?? 0.0)
-                    .compareTo((a['preco_noite'] as num?)?.toDouble() ?? 0.0),
-              );
-
+              // 3. APPLY "THE EQUATION" (Luxury Rate) - OPTIMIZED
               int N = allLeads.length;
-              for (var l in filteredLeads) {
-                final price = (l['preco_noite'] as num?)?.toDouble() ?? 0.0;
-                // Find rank (Position in the price-sorted list)
-                int rank =
-                    priceSorted.indexWhere(
-                      (item) =>
-                          ((item['preco_noite'] as num?)?.toDouble() ?? 0.0) ==
-                          price,
-                    ) +
-                    1;
+              if (N > 0) {
+                // Pre-calculate ranks for all prices to avoid O(N^2) builds
+                List<double> allPrices = allLeads
+                    .map((l) => (l['preco_noite'] as num?)?.toDouble() ?? 0.0)
+                    .toList();
+                allPrices.sort((a, b) => b.compareTo(a)); // High to Low
 
-                // Luxury Rate = ((N - Rank + 1) / N) * 100
-                double rate = N > 0 ? ((N - rank + 1) / N) * 100.0 : 0.0;
+                final Map<double, int> priceToRank = {};
+                for (int i = 0; i < allPrices.length; i++) {
+                  if (!priceToRank.containsKey(allPrices[i])) {
+                    priceToRank[allPrices[i]] = i + 1;
+                  }
+                }
 
-                l['relative_score'] = rate;
+                for (var l in filteredLeads) {
+                  final price = (l['preco_noite'] as num?)?.toDouble() ?? 0.0;
+                  int rank = priceToRank[price] ?? N;
+                  l['relative_score'] = ((N - rank + 1) / N) * 100.0;
+                }
               }
 
               // Apply Sorting (using normalized score)
@@ -239,20 +235,39 @@ class _DashboardPageState extends State<DashboardPage> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Leads de Luxo',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
-                  ),
+                Row(
+                  children: [
+                    const Text(
+                      'Luxo RJ',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white, // Added color for visibility
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white12,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'v1.2.0',
+                        style: TextStyle(fontSize: 10, color: Colors.white38),
+                      ),
+                    ),
+                  ],
                 ),
                 Text(
-                  'Mercado do Rio de Janeiro',
+                  'Inteligência Imobiliária',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.white.withOpacity(0.6),
+                    color: Colors.white.withOpacity(0.5),
                   ),
                 ),
               ],
