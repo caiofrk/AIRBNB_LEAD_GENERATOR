@@ -198,13 +198,25 @@ def scrape_main_leads():
                     if supabase and link:
                         exists = supabase.table("leads").select("id").eq("link_imovel", link).execute()
                         if not exists.data:
+                            # All new leads are now created as 'pending' by default 
+                            # to trigger immediate deep analysis.
                             lead = {
-                                "titulo": title, "link_imovel": link, "preco_noite": price, 
-                                "bairro": loc, "lux_score": get_lux_score(price, title, 30),
-                                "intelligence_status": "none"
+                                "titulo": title, 
+                                "link_imovel": link, 
+                                "preco_noite": price, 
+                                "bairro": loc, 
+                                "lux_score": get_lux_score(price, title, 30),
+                                "intelligence_status": "pending" 
                             }
                             supabase.table("leads").insert(lead).execute()
-                            print(f"    [+] New Lead: {title[:20]}")
+                            print(f"    [+] New Opportunity Found: {title[:20]} (Marked for analysis)")
+                        else:
+                            # If lead exists but has NO intelligence, mark it as pending
+                            current = exists.data[0]
+                            # Using .get for safety if column is missing locally
+                            if current.get('intelligence_status') == 'none' or current.get('intelligence_status') is None:
+                                supabase.table("leads").update({"intelligence_status": "pending"}).eq("id", current['id']).execute()
+                                print(f"    [*] Existing lead {title[:15]} sent back for analysis.")
                 except: continue
     finally:
         driver.quit()
@@ -244,46 +256,55 @@ def start_watcher():
 if __name__ == "__main__":
     import sys
     
+    # Check execution mode
     mode = "watcher"
     if len(sys.argv) > 1:
-        # GitHub Actions or manual command line arg
         mode = sys.argv[1].lower()
     
-    print(f"--- Execution Mode: {mode} ---")
+    print(f"--- AIRBNB INTELLIGENCE ENGINE: {mode.upper()} ---")
     
     if "search" in mode:
+        # Step 1: Find new leads (they will be marked as 'pending')
         scrape_main_leads()
         
+        # Step 2: Immediately process all pending intelligence found in Step 1
+        # This makes 'Intelligence' the default for all new leads.
+        print("\n⚡ Starting immediate enrichment for discovered leads...")
+        process_pending_once() 
+    
     if "deep" in mode:
-        # Single-run mode for GitHub Actions: process pending and exit
         print("--- Running Deep Intelligence (Single Run) ---")
-        try:
-            pending = supabase.table("leads").select("id, link_imovel").eq("intelligence_status", "pending").execute()
-            if pending.data:
-                print(f"🔔 Found {len(pending.data)} requests. Processing...")
-                options = Options()
-                options.add_argument("--headless=new")
-                options.add_argument("--no-sandbox")
-                options.add_argument("--disable-dev-shm-usage")
-                options.add_argument("--disable-gpu")
-                
-                try:
-                    service = Service(ChromeDriverManager().install())
-                    driver = webdriver.Chrome(service=service, options=options)
-                except:
-                    driver = webdriver.Chrome(options=options)
-                    
-                try:
-                    for p in pending.data:
-                        deep_analyze_listing(driver, p['id'], p['link_imovel'])
-                finally:
-                    driver.quit()
-            else:
-                print("    No pending requests found.")
-        except Exception as e:
-            print(f"❌ Deep mode error: {e}")
+        process_pending_once()
     elif "watcher" in mode:
-        # Continuous watcher mode for local use
+        # Step 3: Local Watcher mode (stays alive for on-demand app requests)
         start_watcher()
     else:
-        print(f"Done with '{mode}' tasks (No watcher started).")
+        print(f"Done with tasks (Mode: {mode}).")
+
+def process_pending_once():
+    """Finds all pending leads and runs deep analysis once. Used by Cloud and Search modes."""
+    try:
+        pending = supabase.table("leads").select("id, link_imovel").eq("intelligence_status", "pending").execute()
+        if pending.data:
+            print(f"🔔 Found {len(pending.data)} leads awaiting analysis. Processing...")
+            options = Options()
+            options.add_argument("--headless=new")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-gpu")
+            
+            try:
+                service = Service(ChromeDriverManager().install())
+                driver = webdriver.Chrome(service=service, options=options)
+            except:
+                driver = webdriver.Chrome(options=options)
+                
+            try:
+                for p in pending.data:
+                    deep_analyze_listing(driver, p['id'], p['link_imovel'])
+            finally:
+                driver.quit()
+        else:
+            print("    No pending analysis found.")
+    except Exception as e:
+        print(f"❌ Analysis error: {e}")
