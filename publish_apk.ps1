@@ -12,7 +12,7 @@ if (Test-Path $appDir) {
 
 # 2. Build the APK
 Write-Host "📦 Compilando APK em modo Release... (Isso pode levar um minuto)" -ForegroundColor Yellow
-flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
+flutter build apk --release --no-tree-shake-icons
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Falha na compilação do Flutter!"
