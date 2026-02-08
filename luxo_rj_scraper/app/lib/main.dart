@@ -453,16 +453,29 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  void _showLeadDetails(Map<String, dynamic> lead) {
+  void _showLeadDetails(Map<String, dynamic> initialLead) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _buildDetailSheet(lead),
+      builder: (context) => _buildReactiveDetailSheet(initialLead['id']),
     );
   }
 
-  Widget _buildDetailSheet(Map<String, dynamic> lead) {
+  Widget _buildReactiveDetailSheet(dynamic leadId) {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _client.from('leads').stream(primaryKey: ['id']).eq('id', leadId),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final lead = snapshot.data!.first;
+        return _buildDetailContent(lead);
+      },
+    );
+  }
+
+  Widget _buildDetailContent(Map<String, dynamic> lead) {
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
       maxChildSize: 0.95,
@@ -471,146 +484,160 @@ class _DashboardPageState extends State<DashboardPage> {
           color: Color(0xFF0F172A),
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
-        child: ListView(
-          controller: controller,
-          padding: const EdgeInsets.all(24),
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              lead['titulo'] ?? 'Detalhes do Imóvel',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${lead['bairro']} • RJ',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white.withOpacity(0.5),
-              ),
-            ),
-            const SizedBox(height: 24),
-            _buildDetailRow(
-              Icons.payments_outlined,
-              'Preço por noite',
-              _currencyFormat.format(lead['preco_noite'] ?? 0),
-            ),
-            _buildDetailRow(
-              Icons.auto_awesome,
-              'Score de Luxo',
-              '${lead['lux_score']}/100',
-            ),
-            _buildDetailRow(
-              Icons.person_outline,
-              'Anfitrião',
-              lead['anfitriao'] ?? 'N/A',
-            ),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Inteligência de Vendas',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                if (lead['intelligence_status'] == 'ready')
-                  const Icon(Icons.check_circle, color: Colors.green, size: 20)
-                else if (lead['intelligence_status'] == 'pending')
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.amber,
-                    ),
+        child: RefreshIndicator(
+          onRefresh: () async {
+            setState(() {}); // Triggers a stream re-subscription
+            await Future.delayed(const Duration(milliseconds: 500));
+          },
+          child: ListView(
+            controller: controller,
+            padding: const EdgeInsets.all(24),
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (lead['intelligence_status'] == 'ready') ...[
-              if (lead['cleanliness_gap'] != null)
-                _buildIntelligenceCard(
-                  Icons.warning_amber_rounded,
-                  'Gap de Limpeza Encontrado',
-                  lead['cleanliness_gap'],
-                  Colors.orange,
                 ),
-              if (lead['maintenance_items'] != null &&
-                  (lead['maintenance_items'] as List).isNotEmpty)
-                _buildIntelligenceCard(
-                  Icons.build_circle_outlined,
-                  'Manutenção Crítica',
-                  (lead['maintenance_items'] as List).join(', '),
-                  Colors.blueAccent,
-                ),
-              _buildIntelligenceCard(
-                Icons.business_center_outlined,
-                'Fator de Escala',
-                'Host possui ${lead['host_portfolio_size'] ?? 1} imóvel(is)',
-                Colors.greenAccent,
               ),
-            ] else
+              const SizedBox(height: 24),
+              Text(
+                lead['titulo'] ?? 'Detalhes do Imóvel',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${lead['bairro']} • RJ',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white.withOpacity(0.5),
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildDetailRow(
+                Icons.payments_outlined,
+                'Preço por noite',
+                _currencyFormat.format(lead['preco_noite'] ?? 0),
+              ),
+              _buildDetailRow(
+                Icons.auto_awesome,
+                'Score de Luxo',
+                '${lead['lux_score']}/100',
+              ),
+              _buildDetailRow(
+                Icons.person_outline,
+                'Anfitrião',
+                lead['anfitriao'] ?? 'N/A',
+              ),
+              const SizedBox(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Inteligência de Vendas',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  if (lead['intelligence_status'] == 'ready')
+                    const Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 20,
+                    )
+                  else if (lead['intelligence_status'] == 'pending')
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.amber,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (lead['intelligence_status'] == 'ready') ...[
+                if (lead['cleanliness_gap'] != null)
+                  _buildIntelligenceCard(
+                    Icons.warning_amber_rounded,
+                    'Gap de Limpeza Encontrado',
+                    lead['cleanliness_gap'],
+                    Colors.orange,
+                  ),
+                if (lead['maintenance_items'] != null &&
+                    (lead['maintenance_items'] as List).isNotEmpty)
+                  _buildIntelligenceCard(
+                    Icons.build_circle_outlined,
+                    'Manutenção Crítica',
+                    (lead['maintenance_items'] as List).join(', '),
+                    Colors.blueAccent,
+                  ),
+                _buildIntelligenceCard(
+                  Icons.business_center_outlined,
+                  'Fator de Escala',
+                  'Host possui ${lead['host_portfolio_size'] ?? 1} imóvel(is)',
+                  Colors.greenAccent,
+                ),
+              ] else
+                _buildActionButton(
+                  Icons.analytics_outlined,
+                  lead['intelligence_status'] == 'pending'
+                      ? 'Análise em Fila...'
+                      : 'Gerar Inteligência Detalhada',
+                  Colors.amber,
+                  lead['intelligence_status'] == 'pending'
+                      ? () {}
+                      : () => _requestIntelligence(lead['id']),
+                ),
+              const SizedBox(height: 32),
+              const Text(
+                'Ações do Lead',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
               _buildActionButton(
-                Icons.analytics_outlined,
-                lead['intelligence_status'] == 'pending'
-                    ? 'Análise em Fila...'
-                    : 'Gerar Inteligência Detalhada',
-                Colors.amber,
-                lead['intelligence_status'] == 'pending'
-                    ? () {}
-                    : () => _requestIntelligence(lead['id']),
+                Icons.chat_bubble_outline,
+                'Conversar no WhatsApp',
+                Colors.green,
+                () => _openWhatsApp(lead),
               ),
-            const SizedBox(height: 32),
-            const Text(
-              'Ações do Lead',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            _buildActionButton(
-              Icons.chat_bubble_outline,
-              'Conversar no WhatsApp',
-              Colors.green,
-              () => _openWhatsApp(lead),
-            ),
-            const SizedBox(height: 12),
-            _buildActionButton(
-              Icons.email_outlined,
-              'Enviar E-mail',
-              Colors.blue,
-              () => _sendEmail(lead),
-            ),
-            const SizedBox(height: 12),
-            _buildActionButton(
-              Icons.travel_explore,
-              'Ver no Airbnb',
-              Colors.pinkAccent,
-              () => _openAirbnb(lead),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () {
-                _markAsContacted(lead['id']);
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white10,
-                minimumSize: const Size(double.infinity, 56),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+              const SizedBox(height: 12),
+              _buildActionButton(
+                Icons.email_outlined,
+                'Enviar E-mail',
+                Colors.blue,
+                () => _sendEmail(lead),
+              ),
+              const SizedBox(height: 12),
+              _buildActionButton(
+                Icons.travel_explore,
+                'Ver no Airbnb',
+                Colors.pinkAccent,
+                () => _openAirbnb(lead),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () {
+                  _markAsContacted(lead['id']);
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white10,
+                  minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
+                child: const Text('Marcar como Contatado'),
               ),
-              child: const Text('Marcar como Contatado'),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

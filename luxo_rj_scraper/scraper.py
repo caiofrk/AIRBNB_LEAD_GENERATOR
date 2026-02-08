@@ -6,7 +6,8 @@ import re
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -110,7 +111,11 @@ def scrape_main_leads():
     
     options = Options()
     options.add_argument("--headless=new")
-    driver = webdriver.Chrome(options=options)
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
 
     try:
         for loc in neighborhoods:
@@ -150,37 +155,63 @@ def scrape_main_leads():
     finally:
         driver.quit()
 
-def process_pending_intelligence():
-    """Checks for leads marked as 'pending' in the app and runs deep analysis."""
-    print("--- Checking for Deep Analysis Requests ---")
-    if not supabase: return
+def start_watcher():
+    """Stays active and waits for requests from the app."""
+    print("\n🚀 [WATCHER] Intelligence Engine is ACTIVE.")
+    print("Keep this terminal open. Requests from your phone will appear here instantly.\n")
     
-    pending = supabase.table("leads").select("id, link_imovel").eq("intelligence_status", "pending").execute()
-    
-    if not pending.data:
-        print("    No pending requests.")
-        return
-
-    print(f"    Found {len(pending.data)} requests! Starting Deep Search...")
-    options = Options()
-    # Deep analysis often needs a visible browser or more headful behavior to get reviews
-    options.add_argument("--headless=new") 
-    driver = webdriver.Chrome(options=options)
-    
-    try:
-        for p in pending.data:
-            deep_analyze_listing(driver, p['id'], p['link_imovel'])
-    finally:
-        driver.quit()
+    while True:
+        try:
+            # Check for pending intelligence requests
+            pending = supabase.table("leads").select("id, link_imovel").eq("intelligence_status", "pending").execute()
+            
+            if pending.data:
+                print(f"🔔 Request Detected! Processing {len(pending.data)} lead(s)...")
+                options = Options()
+                options.add_argument("--headless=new")
+                options.add_argument("--no-sandbox")
+                options.add_argument("--disable-dev-shm-usage")
+                
+                service = Service(ChromeDriverManager().install())
+                driver = webdriver.Chrome(service=service, options=options)
+                
+                try:
+                    for p in pending.data:
+                        deep_analyze_listing(driver, p['id'], p['link_imovel'])
+                finally:
+                    driver.quit()
+                    print("✅ Processing complete. Waiting for new requests...")
+            
+        except Exception as e:
+            print(f"Watcher error: {e}")
+            
+        time.sleep(5) # Check every 5 seconds for instant feedback
 
 if __name__ == "__main__":
     import sys
-    import re
     
-    if "deep" in sys.argv:
-        # Run ONLY pending requests (On-demand mode)
-        process_pending_intelligence()
-    else:
-        # Standard run: Scrape new leads, then check for pending intelligence
+    # Check if we want to do a fresh search first
+    if "search" in sys.argv:
         scrape_main_leads()
-        process_pending_intelligence()
+        
+    if "deep" in sys.argv:
+        # Single-run mode for GitHub Actions: process pending and exit
+        print("--- Running Deep Intelligence (Single Run) ---")
+        pending = supabase.table("leads").select("id, link_imovel").eq("intelligence_status", "pending").execute()
+        if pending.data:
+            options = Options()
+            options.add_argument("--headless=new")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=options)
+            try:
+                for p in pending.data:
+                    deep_analyze_listing(driver, p['id'], p['link_imovel'])
+            finally:
+                driver.quit()
+        else:
+            print("No pending requests.")
+    else:
+        # Continuous watcher mode for local use
+        start_watcher()
