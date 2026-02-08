@@ -14,16 +14,29 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-GOOGLE_API_KEY = os.getenv("GOOGLE_API")
+def get_env_or_secret(key):
+    val = os.getenv(key)
+    if not val:
+        # Check for capitalized version (standard in secrets)
+        val = os.getenv(key.upper())
+    return val
+
+SUPABASE_URL = get_env_or_secret("SUPABASE_URL")
+SUPABASE_KEY = get_env_or_secret("SUPABASE_KEY")
+GOOGLE_API_KEY = get_env_or_secret("GOOGLE_API")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print("❌ ERROR: SUPABASE_URL or SUPABASE_KEY is missing!")
+    print("Please ensure these are set in your .env file (local) or GitHub Secrets (cloud).")
+    exit(1)
 
 # Initialize Supabase
 try:
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    print("✅ Supabase connection initialized.")
 except Exception as e:
-    print(f"Warning: Supabase connection failed. check .env. ({e})")
-    supabase = None
+    print(f"❌ ERROR: Supabase connection failed: {e}")
+    exit(1)
 
 def get_lux_score(price, title, photos_count, badges=None):
     score = 0
@@ -147,9 +160,16 @@ def scrape_main_leads():
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("window-size=1920,1080")
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
     
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
+    try:
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+    except Exception as e:
+        print(f"❌ Local Chrome failure: {e}. Trying simple initialization...")
+        driver = webdriver.Chrome(options=options)
 
     try:
         for loc in neighborhoods:
@@ -224,28 +244,46 @@ def start_watcher():
 if __name__ == "__main__":
     import sys
     
-    # Check if we want to do a fresh search first
-    if "search" in sys.argv:
+    mode = "watcher"
+    if len(sys.argv) > 1:
+        # GitHub Actions or manual command line arg
+        mode = sys.argv[1].lower()
+    
+    print(f"--- Execution Mode: {mode} ---")
+    
+    if "search" in mode:
         scrape_main_leads()
         
-    if "deep" in sys.argv:
+    if "deep" in mode:
         # Single-run mode for GitHub Actions: process pending and exit
         print("--- Running Deep Intelligence (Single Run) ---")
-        pending = supabase.table("leads").select("id, link_imovel").eq("intelligence_status", "pending").execute()
-        if pending.data:
-            options = Options()
-            options.add_argument("--headless=new")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            service = Service(ChromeDriverManager().install())
-            driver = webdriver.Chrome(service=service, options=options)
-            try:
-                for p in pending.data:
-                    deep_analyze_listing(driver, p['id'], p['link_imovel'])
-            finally:
-                driver.quit()
-        else:
-            print("No pending requests.")
-    else:
+        try:
+            pending = supabase.table("leads").select("id, link_imovel").eq("intelligence_status", "pending").execute()
+            if pending.data:
+                print(f"🔔 Found {len(pending.data)} requests. Processing...")
+                options = Options()
+                options.add_argument("--headless=new")
+                options.add_argument("--no-sandbox")
+                options.add_argument("--disable-dev-shm-usage")
+                options.add_argument("--disable-gpu")
+                
+                try:
+                    service = Service(ChromeDriverManager().install())
+                    driver = webdriver.Chrome(service=service, options=options)
+                except:
+                    driver = webdriver.Chrome(options=options)
+                    
+                try:
+                    for p in pending.data:
+                        deep_analyze_listing(driver, p['id'], p['link_imovel'])
+                finally:
+                    driver.quit()
+            else:
+                print("    No pending requests found.")
+        except Exception as e:
+            print(f"❌ Deep mode error: {e}")
+    elif "watcher" in mode:
         # Continuous watcher mode for local use
         start_watcher()
+    else:
+        print(f"Done with '{mode}' tasks (No watcher started).")

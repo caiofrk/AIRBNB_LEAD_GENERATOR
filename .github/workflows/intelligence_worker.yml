@@ -34,4 +34,7 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           cd luxo_rj_scraper
-          python scraper.py ${{ github.event.inputs.mode }}
+          # If triggered by schedule, default to 'deep'
+          MODE="${{ github.event.inputs.mode }}"
+          if [ -z "$MODE" ]; then MODE="deep"; fi
+          python scraper.py $MODE
