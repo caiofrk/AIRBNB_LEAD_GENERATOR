@@ -22,6 +22,12 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Verify Secrets
+        run: |
+          if [ -z "${{ secrets.SUPABASE_URL }}" ]; then echo "❌ SUPABASE_URL is MISSING in GitHub Secrets"; fi
+          if [ -z "${{ secrets.SUPABASE_KEY }}" ]; then echo "❌ SUPABASE_KEY is MISSING in GitHub Secrets"; fi
+          if [ -n "${{ secrets.SUPABASE_URL }}" ] && [ -n "${{ secrets.SUPABASE_KEY }}" ]; then echo "✅ Secrets are present."; fi
+
       - name: Install dependencies
         run: |
           cd luxo_rj_scraper
