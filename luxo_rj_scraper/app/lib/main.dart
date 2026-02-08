@@ -46,7 +46,7 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   final _client = Supabase.instance.client;
   String _searchQuery = '';
-  String _sortBy = 'score'; // 'score', 'price_asc', 'price_desc', 'newest'
+  String _sortBy = 'newest'; // 'score', 'price_asc', 'price_desc', 'newest'
   String _selectedBairro = 'Todos';
   final _currencyFormat = NumberFormat.simpleCurrency(locale: 'pt_BR');
 
@@ -110,8 +110,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   break;
                 case 'newest':
                   filteredLeads.sort(
-                    (a, b) =>
-                        (b['criado_em'] ?? '').compareTo(a['criado_em'] ?? ''),
+                    (a, b) => (b['created_at'] ?? b['criado_em'] ?? '')
+                        .compareTo(a['created_at'] ?? a['criado_em'] ?? ''),
                   );
                   break;
               }
@@ -363,8 +363,9 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildLeadCard(Map<String, dynamic> lead) {
     final score = lead['lux_score'] ?? 0;
+    final timeAgo = _formatTimeAgo(lead['criado_em'] ?? lead['created_at']);
 
-    return GestureDetector(
+    return _AnimatedPress(
       onTap: () => _showLeadDetails(lead),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -387,15 +388,30 @@ class _DashboardPageState extends State<DashboardPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          lead['titulo'] ?? 'Imóvel Premium',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                lead['titulo'] ?? 'Imóvel Premium',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (timeAgo.isNotEmpty)
+                              Text(
+                                timeAgo,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white.withOpacity(0.3),
+                                ),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 4),
                         Row(
@@ -420,7 +436,11 @@ class _DashboardPageState extends State<DashboardPage> {
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right, color: Colors.white24),
+                  const Icon(
+                    Icons.chevron_right,
+                    color: Colors.white24,
+                    size: 20,
+                  ),
                 ],
               ),
             ),
@@ -428,6 +448,24 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       ),
     );
+  }
+
+  String _formatTimeAgo(dynamic timestamp) {
+    if (timestamp == null) return '';
+    try {
+      final DateTime date = timestamp is DateTime
+          ? timestamp
+          : DateTime.parse(timestamp.toString()).toLocal();
+      final diff = DateTime.now().difference(date);
+
+      if (diff.inDays > 7) return '${DateFormat('dd/MM').format(date)}';
+      if (diff.inDays > 0) return '${diff.inDays}d atrás';
+      if (diff.inHours > 0) return '${diff.inHours}h atrás';
+      if (diff.inMinutes > 0) return '${diff.inMinutes}m atrás';
+      return 'Agora';
+    } catch (e) {
+      return '';
+    }
   }
 
   Widget _buildScoreIndicator(int score) {
@@ -955,6 +993,13 @@ class _DashboardPageState extends State<DashboardPage> {
                   _buildFilterChip(
                     'Maior Preço',
                     'price_desc',
+                    _sortBy,
+                    (val) => setState(() => _sortBy = val),
+                    setModalState,
+                  ),
+                  _buildFilterChip(
+                    'Mais Recente',
+                    'newest',
                     _sortBy,
                     (val) => setState(() => _sortBy = val),
                     setModalState,

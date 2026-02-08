@@ -16,7 +16,8 @@ Este aplicativo foi desenvolvido para transformar a prospecção de imóveis de 
     - **Manutenção Técnica**: Detecta itens que exigem cuidado especial (Paredes de vidro, mármore, cafeteiras profissionais, piscinas aquecidas).
     - **Análise de Portfólio**: Identifica se o host é um profissional (múltiplos imóveis) ou proprietário solo.
 5.  **Pitch Generator Dinâmico**: Gera automaticamente um rascunho de e-mail (ou WhatsApp futuramente) personalizado, citando os problemas específicos encontrados no imóvel para aumentar a conversão.
-6.  **Infraestrutura Híbrida**: Funciona de forma reativa com Supabase Realtime. Atualizações feitas no PC aparecem instantaneamente no celular.
+6.  **Rastreamento de Recência**: Exibição em tempo real de quanto tempo atrás o lead foi descoberto (ex: "Há 2h", "Há 1d"), permitindo priorizar os imóveis mais novos.
+7.  **Infraestrutura Híbrida**: Funciona de forma reativa com Supabase Realtime. Atualizações feitas no PC aparecem instantaneamente no celular.
 
 ---
 
