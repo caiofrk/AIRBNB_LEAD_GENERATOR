@@ -398,12 +398,24 @@ class _DashboardPageState extends State<DashboardPage> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          '${lead['bairro'] ?? 'RJ'} • ${_currencyFormat.format(lead['preco_noite'] ?? 0)}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.white.withOpacity(0.5),
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              '${lead['bairro'] ?? 'RJ'} • ${_currencyFormat.format(lead['preco_noite'] ?? 0)}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.white.withOpacity(0.5),
+                              ),
+                            ),
+                            if (lead['cleanliness_gap'] != null) ...[
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                size: 14,
+                                color: Colors.orange,
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -504,6 +516,40 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             const SizedBox(height: 32),
             const Text(
+              'Inteligência de Vendas',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            if (lead['cleanliness_gap'] != null)
+              _buildIntelligenceCard(
+                Icons.warning_amber_rounded,
+                'Falha na Limpeza (Reviews)',
+                lead['cleanliness_gap'],
+                Colors.orange,
+              ),
+            if (lead['maintenance_items'] != null &&
+                (lead['maintenance_items'] as List).isNotEmpty)
+              _buildIntelligenceCard(
+                Icons.build_circle_outlined,
+                'Manutenção Crítica',
+                (lead['maintenance_items'] as List).join(', '),
+                Colors.blueAccent,
+              ),
+            if (lead['turnover_stress'] != null)
+              _buildIntelligenceCard(
+                Icons.speed,
+                'Estresse de Operação',
+                lead['turnover_stress'],
+                Colors.redAccent,
+              ),
+            _buildIntelligenceCard(
+              Icons.business_center_outlined,
+              'Portfólio do Anfitrião',
+              '${lead['host_portfolio_size'] ?? 1} imóvel(is) no Rio',
+              Colors.greenAccent,
+            ),
+            const SizedBox(height: 32),
+            const Text(
               'Ações do Lead',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
@@ -559,6 +605,53 @@ class _DashboardPageState extends State<DashboardPage> {
           Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5))),
           const Spacer(),
           Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIntelligenceCard(
+    IconData icon,
+    String title,
+    String value,
+    Color color,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
