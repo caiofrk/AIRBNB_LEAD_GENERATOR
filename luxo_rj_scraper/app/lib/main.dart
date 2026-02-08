@@ -515,39 +515,60 @@ class _DashboardPageState extends State<DashboardPage> {
               lead['anfitriao'] ?? 'N/A',
             ),
             const SizedBox(height: 32),
-            const Text(
-              'Inteligência de Vendas',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Inteligência de Vendas',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                if (lead['intelligence_status'] == 'ready')
+                  const Icon(Icons.check_circle, color: Colors.green, size: 20)
+                else if (lead['intelligence_status'] == 'pending')
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.amber,
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
-            if (lead['cleanliness_gap'] != null)
+            if (lead['intelligence_status'] == 'ready') ...[
+              if (lead['cleanliness_gap'] != null)
+                _buildIntelligenceCard(
+                  Icons.warning_amber_rounded,
+                  'Gap de Limpeza Encontrado',
+                  lead['cleanliness_gap'],
+                  Colors.orange,
+                ),
+              if (lead['maintenance_items'] != null &&
+                  (lead['maintenance_items'] as List).isNotEmpty)
+                _buildIntelligenceCard(
+                  Icons.build_circle_outlined,
+                  'Manutenção Crítica',
+                  (lead['maintenance_items'] as List).join(', '),
+                  Colors.blueAccent,
+                ),
               _buildIntelligenceCard(
-                Icons.warning_amber_rounded,
-                'Falha na Limpeza (Reviews)',
-                lead['cleanliness_gap'],
-                Colors.orange,
+                Icons.business_center_outlined,
+                'Fator de Escala',
+                'Host possui ${lead['host_portfolio_size'] ?? 1} imóvel(is)',
+                Colors.greenAccent,
               ),
-            if (lead['maintenance_items'] != null &&
-                (lead['maintenance_items'] as List).isNotEmpty)
-              _buildIntelligenceCard(
-                Icons.build_circle_outlined,
-                'Manutenção Crítica',
-                (lead['maintenance_items'] as List).join(', '),
-                Colors.blueAccent,
+            ] else
+              _buildActionButton(
+                Icons.analytics_outlined,
+                lead['intelligence_status'] == 'pending'
+                    ? 'Análise em Fila...'
+                    : 'Gerar Inteligência Detalhada',
+                Colors.amber,
+                lead['intelligence_status'] == 'pending'
+                    ? () {}
+                    : () => _requestIntelligence(lead['id']),
               ),
-            if (lead['turnover_stress'] != null)
-              _buildIntelligenceCard(
-                Icons.speed,
-                'Estresse de Operação',
-                lead['turnover_stress'],
-                Colors.redAccent,
-              ),
-            _buildIntelligenceCard(
-              Icons.business_center_outlined,
-              'Portfólio do Anfitrião',
-              '${lead['host_portfolio_size'] ?? 1} imóvel(is) no Rio',
-              Colors.greenAccent,
-            ),
             const SizedBox(height: 32),
             const Text(
               'Ações do Lead',
@@ -814,6 +835,28 @@ class _DashboardPageState extends State<DashboardPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Não foi possível abrir o link.')),
       );
+    }
+  }
+
+  Future<void> _requestIntelligence(dynamic id) async {
+    try {
+      await _client
+          .from('leads')
+          .update({'intelligence_status': 'pending'})
+          .eq('id', id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Solicitação enviada! Rode o scraper no PC para processar.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro: $e')));
     }
   }
 
