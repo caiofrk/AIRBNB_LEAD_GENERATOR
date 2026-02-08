@@ -86,12 +86,27 @@ class _DashboardPageState extends State<DashboardPage> {
                 return matchSearch && matchBairro && isNotContacted;
               }).toList();
 
-              // Apply Sorting
+              // 3. APPLY DYNAMIC RELATIVE SCORING
+              // We find the max absolute score and normalize everyone against it.
+              double maxRaw = 0.1;
+              for (var l in allLeads) {
+                final raw = (l['lux_score'] as num?)?.toDouble() ?? 0.0;
+                if (raw > maxRaw) maxRaw = raw;
+              }
+
+              // This ensures the "best" property in your current list is ALWAYS 100.
+              for (var l in filteredLeads) {
+                final raw = (l['lux_score'] as num?)?.toDouble() ?? 0.0;
+                l['relative_score'] = (raw / maxRaw) * 100.0;
+              }
+
+              // Apply Sorting (using normalized score)
               switch (_sortBy) {
                 case 'score':
                   filteredLeads.sort(
-                    (a, b) =>
-                        (b['lux_score'] ?? 0).compareTo(a['lux_score'] ?? 0),
+                    (a, b) => (b['relative_score'] as double).compareTo(
+                      a['relative_score'] as double,
+                    ),
                   );
                   break;
                 case 'price_asc':
@@ -423,7 +438,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildLeadCard(Map<String, dynamic> lead) {
-    final score = lead['lux_score'] ?? 0;
+    final double score = (lead['relative_score'] as num?)?.toDouble() ?? 0.0;
     final timeAgo = _formatTimeAgo(lead['criado_em'] ?? lead['created_at']);
 
     return _AnimatedPress(
@@ -529,24 +544,28 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  Widget _buildScoreIndicator(int score) {
-    final color = score >= 90
+  Widget _buildScoreIndicator(double score) {
+    final color = score >= 90.0
         ? Colors.amber
-        : score >= 70
+        : score >= 60.0
         ? Colors.indigoAccent
         : Colors.blueGrey;
 
     return Container(
-      width: 50,
-      height: 50,
+      width: 54,
+      height: 54,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: color.withOpacity(0.5), width: 2),
       ),
       child: Center(
         child: Text(
-          '$score',
-          style: TextStyle(fontWeight: FontWeight.bold, color: color),
+          score.toStringAsFixed(1),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: color,
+            fontSize: score >= 100 ? 10 : 12,
+          ),
         ),
       ),
     );

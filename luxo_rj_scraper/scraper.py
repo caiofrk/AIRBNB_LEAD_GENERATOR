@@ -39,22 +39,23 @@ except Exception as e:
     exit(1)
 
 def get_lux_score(price, title, photos_count, badges=None):
-    score = 0
-    if price >= 1000: score += 15
-    if price >= 3000: score += 15
-    if price >= 5000: score += 10
+    # 1. Price Component (Max 50 pts) - Linear scale up to R$ 10.000
+    price_points = min((price / 10000.0) * 50.0, 50.0)
     
+    # 2. Keywords Component (Max 30 pts)
     keywords = ['luxo', 'luxury', 'vista mar', 'ocean view', 'cobertura', 'penthouse', 'design', 'exclusivo']
     lower_title = title.lower()
-    for kw in keywords:
-        if kw in lower_title:
-            score += 5
-            
-    if badges:
-        if "Luxe" in badges: score += 30
-        if "Plus" in badges: score += 15
+    found_count = sum(1 for kw in keywords if kw in lower_title)
+    kw_points = (found_count / len(keywords)) * 30.0
     
-    return min(score, 100)
+    # 3. Features & Badges (Max 20 pts)
+    photo_points = min((photos_count / 50.0) * 10.0, 10.0)
+    badge_points = 0
+    if badges:
+        if "Luxe" in badges: badge_points = 10.0
+        elif "Plus" in badges: badge_points = 5.0
+        
+    return round(price_points + kw_points + photo_points + badge_points, 1)
 
 def deep_analyze_listing(driver, lead_id, url):
     """Deeply crawls a single listing to extract detailed features and reviews."""
