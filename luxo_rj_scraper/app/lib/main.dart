@@ -758,10 +758,44 @@ class _DashboardPageState extends State<DashboardPage> {
       ).showSnackBar(const SnackBar(content: Text('E-mail indisponível.')));
       return;
     }
-    final url = Uri.parse(
-      "mailto:$email?subject=Interesse%20em%20Gerenciamento%20de%20Imóvel&body=Olá,%20tenho%20interesse%20em%20seu%20imóvel%20${lead['titulo']}",
-    );
-    if (await canLaunchUrl(url)) await launchUrl(url);
+
+    final title = lead['titulo'] ?? 'seu imóvel';
+    final gap = lead['cleanliness_gap'];
+    final maintenance = (lead['maintenance_items'] as List?)?.join(', ') ?? '';
+
+    String body =
+        "Olá! Trabalho com limpeza técnica de alto padrão no Rio e notei seu imóvel '$title'.\n\n";
+
+    if (gap != null) {
+      body +=
+          "Vi em um comentário recente que um hóspede mencionou algo sobre: \"$gap\". ";
+      body +=
+          "Em locações de luxo, esse tipo de detalhe pode afetar seu status e preço médio. Nós somos especialistas em inspeções de 50 pontos para evitar exatamente isso.\n\n";
+    }
+
+    if (maintenance.isNotEmpty) {
+      body +=
+          "Como seu imóvel possui itens de alta manutenção (como $maintenance), utilizamos produtos específicos que não agridem superfícies nobres.\n\n";
+    }
+
+    body +=
+        "Gostaria de agendar uma limpeza experimental gratuita ou um orçamento?\n\nNo aguardo,\n[Seu Nome]";
+
+    final subject = Uri.encodeComponent("Serviço Premium para $title");
+    final encodedBody = Uri.encodeComponent(body);
+
+    final url = Uri.parse("mailto:$email?subject=$subject&body=$encodedBody");
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Não foi possível abrir o app de e-mail.'),
+        ),
+      );
+    }
   }
 
   Future<void> _openAirbnb(Map<String, dynamic> lead) async {
