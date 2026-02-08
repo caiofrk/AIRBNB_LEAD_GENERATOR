@@ -24,9 +24,24 @@ jobs:
 
       - name: Verify Secrets
         run: |
-          if [ -z "${{ secrets.SUPABASE_URL }}" ]; then echo "❌ SUPABASE_URL is MISSING in GitHub Secrets"; fi
-          if [ -z "${{ secrets.SUPABASE_KEY }}" ]; then echo "❌ SUPABASE_KEY is MISSING in GitHub Secrets"; fi
-          if [ -n "${{ secrets.SUPABASE_URL }}" ] && [ -n "${{ secrets.SUPABASE_KEY }}" ]; then echo "✅ Secrets are present."; fi
+          echo "Checking Repository Secrets..."
+          if [ -z "${{ secrets.SUPABASE_URL }}" ]; then 
+            echo "❌ SUPABASE_URL is MISSING in GitHub Secrets"
+          else
+            echo "✅ SUPABASE_URL found in Secrets."
+          fi
+          
+          if [ -z "${{ secrets.SUPABASE_KEY }}" ]; then 
+            echo "❌ SUPABASE_KEY is MISSING in GitHub Secrets"
+          else
+            echo "✅ SUPABASE_KEY found in Secrets."
+          fi
+
+          if [ -z "${{ vars.SUPABASE_URL }}" ]; then 
+            echo "ℹ️ SUPABASE_URL is not in GitHub Variables (checking secrets next...)"
+          else
+            echo "⚠️ SUPABASE_URL found in GitHub Variables (Expected it in Secrets)."
+          fi
 
       - name: Install dependencies
         run: |
@@ -36,8 +51,9 @@ jobs:
 
       - name: Run Scraper
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          # Mapping from both secrets and vars to be triple-sure
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY || vars.SUPABASE_KEY }}
         run: |
           cd luxo_rj_scraper
           # If triggered by schedule, default to 'deep'
