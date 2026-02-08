@@ -259,10 +259,44 @@ if __name__ == "__main__":
     # Check execution mode
     mode = "watcher"
     if len(sys.argv) > 1:
-        mode = sys.argv[1].lower()
+        mode = sys.argv[1] # Keep case for URLs
     
     print(f"--- AIRBNB INTELLIGENCE ENGINE: {mode.upper()} ---")
     
+    # NEW: Single Property/URL Mode
+    if mode.startswith("http"):
+        url = mode.split('?')[0] # Clean URL
+        print(f"🎯 Targeted Analysis: {url}")
+        
+        options = Options()
+        options.add_argument("--headless=new")
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+        
+        try:
+            # Check if lead exists, if not, create a placeholder
+            exists = supabase.table("leads").select("id").eq("link_imovel", url).execute()
+            if exists.data:
+                lead_id = exists.data[0]['id']
+            else:
+                print("      [+] Creating new lead entry for this URL...")
+                new_lead = {
+                    "titulo": "Manual Target",
+                    "link_imovel": url,
+                    "intelligence_status": "pending",
+                    "bairro": "Manual"
+                }
+                res = supabase.table("leads").insert(new_lead).execute()
+                lead_id = res.data[0]['id']
+            
+            deep_analyze_listing(driver, lead_id, url)
+            print(f"✅ Analysis complete for manual target.")
+        finally:
+            driver.quit()
+        sys.exit(0)
+
+    # Standard Modes
+    mode = mode.lower()
     if "search" in mode:
         # Step 1: Find new leads (they will be marked as 'pending')
         scrape_main_leads()
