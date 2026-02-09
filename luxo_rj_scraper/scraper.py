@@ -79,8 +79,8 @@ def get_ai_intelligence(description, reviews):
             return response.text.strip()
         except Exception as e:
             if "429" in str(e):
-                print(f"      [AI] Quota hit (429). Retry {attempt+1}/3 in 10s...")
-                time.sleep(10)
+                print(f"      [AI] Quota hit (429). Waiting 60s for reset...")
+                time.sleep(60)
                 continue
             print(f"      [!] Gemini Error: {e}")
             break
@@ -193,6 +193,10 @@ def deep_analyze_listing(driver, lead_id, url):
         ai_report = get_ai_intelligence(description, all_reviews_text)
         if ai_report:
             updates['ai_report'] = ai_report
+            # Fallback: Store inside description in case column is missing
+            updates['descricao'] = f"--- RELATÓRIO DE COMBATE IA ---\n{ai_report}\n\n{description}"
+        else:
+            updates['descricao'] = description
 
         if supabase:
             supabase.table("leads").update(updates).eq("id", lead_id).execute()

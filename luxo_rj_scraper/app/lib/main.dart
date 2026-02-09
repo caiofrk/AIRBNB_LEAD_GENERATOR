@@ -604,24 +604,37 @@ class _DashboardPageState extends State<DashboardPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _buildReactiveDetailSheet(initialLead['id']),
+      builder: (context) => _buildReactiveDetailSheet(
+        initialLead['id'],
+        initialScore: initialLead['relative_score'],
+      ),
     );
   }
 
-  Widget _buildReactiveDetailSheet(dynamic leadId) {
+  Widget _buildReactiveDetailSheet(dynamic leadId, {double? initialScore}) {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _client.from('leads').stream(primaryKey: ['id']).eq('id', leadId),
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
+          return Container(
+            height: 400,
+            decoration: const BoxDecoration(
+              color: Color(0xFF0F172A),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            ),
+            child: const Center(child: CircularProgressIndicator()),
+          );
         }
         final lead = snapshot.data!.first;
-        return _buildDetailContent(lead);
+        return _buildDetailContent(lead, relativeScore: initialScore);
       },
     );
   }
 
-  Widget _buildDetailContent(Map<String, dynamic> lead) {
+  Widget _buildDetailContent(
+    Map<String, dynamic> lead, {
+    double? relativeScore,
+  }) {
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
       maxChildSize: 0.95,
@@ -674,8 +687,10 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               _buildDetailRow(
                 Icons.auto_awesome,
-                'Score de Luxo',
-                '${lead['lux_score']}/100',
+                'Luxury Rate (Equação)',
+                relativeScore != null
+                    ? '${relativeScore.toStringAsFixed(1)}%'
+                    : 'Processando...',
               ),
               _buildDetailRow(
                 Icons.person_outline,
@@ -709,13 +724,30 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               const SizedBox(height: 16),
               if (lead['intelligence_status'] == 'ready') ...[
-                if (lead['ai_report'] != null)
-                  _buildIntelligenceCard(
-                    Icons.psychology_outlined,
-                    'Relatório de Combate (IA)',
-                    lead['ai_report'],
-                    const Color(0xFFA855F7),
-                  ),
+                () {
+                  String? report = lead['ai_report'];
+                  // Fallback: Check in description
+                  if (report == null && lead['descricao'] != null) {
+                    final desc = lead['descricao'] as String;
+                    if (desc.contains('--- RELATÓRIO DE COMBATE IA ---')) {
+                      report = desc
+                          .split('--- RELATÓRIO DE COMBATE IA ---')
+                          .last
+                          .split('\n\n')
+                          .first
+                          .trim();
+                    }
+                  }
+                  if (report != null) {
+                    return _buildIntelligenceCard(
+                      Icons.psychology_outlined,
+                      'Relatório de Combate (IA)',
+                      report,
+                      const Color(0xFFA855F7),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                }(),
                 if (lead['cleanliness_gap'] != null)
                   _buildIntelligenceCard(
                     Icons.warning_amber_rounded,
