@@ -11,6 +11,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from supabase import create_client, Client
 from dotenv import load_dotenv
 from google import genai
+from datetime import datetime, timedelta
 
 # Load environment variables
 load_dotenv()
@@ -209,7 +210,13 @@ def scrape_main_leads():
          "Ipanema", "Leblon", "Barra da Tijuca", "Joá", "São Conrado", "Lagoa", "Copacabana", 
          "Itanhangá", "Guaratiba", "Botafogo", "Vargem Grande", "Vargem Pequena", "Ilha de Guaratiba"
     ]
-    checkin, checkout, num_nights = "2026-06-11", "2026-06-13", 2
+    # Dynamic Date Calculation: 2 weeks from today, 3 nights stay
+    checkin_dt = datetime.now() + timedelta(days=14)
+    checkout_dt = checkin_dt + timedelta(days=3)
+    
+    checkin = checkin_dt.strftime("%Y-%m-%d")
+    checkout = checkout_dt.strftime("%Y-%m-%d")
+    num_nights = 3
     
     options = Options()
     options.add_argument("--headless=new")
