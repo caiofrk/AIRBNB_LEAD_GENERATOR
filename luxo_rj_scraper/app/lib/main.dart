@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:ui';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
+import 'dart:convert';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -257,7 +258,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
-                        'v1.2.0',
+                        'v1.2.2',
                         style: TextStyle(fontSize: 10, color: Colors.white38),
                       ),
                     ),
@@ -611,6 +612,26 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  Map<String, dynamic> _parseAIIntel(Map<String, dynamic> lead) {
+    try {
+      String? raw = lead['ai_report'];
+      // Fallback: Check in description
+      if (raw == null && lead['descricao'] != null) {
+        final desc = lead['descricao'] as String;
+        if (desc.contains('--- AI_INTEL_JSON ---')) {
+          raw = desc
+              .split('--- AI_INTEL_JSON ---')
+              .last
+              .split('---')
+              .first
+              .trim();
+        }
+      }
+      if (raw != null) return jsonDecode(raw);
+    } catch (_) {}
+    return {};
+  }
+
   Widget _buildReactiveDetailSheet(dynamic leadId, {double? initialScore}) {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _client.from('leads').stream(primaryKey: ['id']).eq('id', leadId),
@@ -635,6 +656,9 @@ class _DashboardPageState extends State<DashboardPage> {
     Map<String, dynamic> lead, {
     double? relativeScore,
   }) {
+    final aiIntel = _parseAIIntel(lead);
+    final double aiLuxScore = (aiIntel['luxury'] as num? ?? 0.0) * 100.0;
+    final displayScore = aiLuxScore > 0 ? aiLuxScore : (relativeScore ?? 0.0);
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
       maxChildSize: 0.95,
@@ -687,10 +711,8 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               _buildDetailRow(
                 Icons.auto_awesome,
-                'Luxury Rate (Equação)',
-                relativeScore != null
-                    ? '${relativeScore.toStringAsFixed(1)}%'
-                    : 'Processando...',
+                'Classificação IA (Luxo)',
+                '${displayScore.toStringAsFixed(1)}%',
               ),
               _buildDetailRow(
                 Icons.person_outline,
@@ -724,30 +746,20 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               const SizedBox(height: 16),
               if (lead['intelligence_status'] == 'ready') ...[
-                () {
-                  String? report = lead['ai_report'];
-                  // Fallback: Check in description
-                  if (report == null && lead['descricao'] != null) {
-                    final desc = lead['descricao'] as String;
-                    if (desc.contains('--- RELATÓRIO DE COMBATE IA ---')) {
-                      report = desc
-                          .split('--- RELATÓRIO DE COMBATE IA ---')
-                          .last
-                          .split('\n\n')
-                          .first
-                          .trim();
-                    }
-                  }
-                  if (report != null) {
-                    return _buildIntelligenceCard(
-                      Icons.psychology_outlined,
-                      'Relatório de Combate (IA)',
-                      report,
-                      const Color(0xFFA855F7),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                }(),
+                if (aiIntel.containsKey('combat_report'))
+                  _buildIntelligenceCard(
+                    Icons.psychology_outlined,
+                    'Relatório de Combate (IA)',
+                    "DOR: ${aiIntel['combat_report']['dor']}\nGANCHO: ${aiIntel['combat_report']['gancho']}",
+                    const Color(0xFFA855F7),
+                  ),
+                if (aiIntel.containsKey('reason'))
+                  _buildIntelligenceCard(
+                    Icons.info_outline,
+                    'Análise do Score',
+                    aiIntel['reason'],
+                    Colors.blueAccent,
+                  ),
                 if (lead['cleanliness_gap'] != null)
                   _buildIntelligenceCard(
                     Icons.warning_amber_rounded,
@@ -974,13 +986,21 @@ class _DashboardPageState extends State<DashboardPage> {
       );
       return;
     }
+
+    final aiIntel = _parseAIIntel(lead);
+    final waHook = aiIntel['wa_hook'];
     final num = phone.replaceAll(RegExp(r'[^0-9]'), '');
-    final message = Uri.encodeComponent(
-      "Olá! Vi seu imóvel ${lead['titulo']} e tenho interesse em seus serviços de gestão de luxo.",
+
+    final String defaultMsg =
+        "Olá! Vi seu imóvel ${lead['titulo']} e tenho interesse em seus serviços de gestão de luxo.";
+    final String msg = waHook ?? defaultMsg;
+
+    final url = Uri.parse(
+      "https://wa.me/$num?text=${Uri.encodeComponent(msg)}",
     );
-    final url = Uri.parse("https://wa.me/$num?text=$message");
-    if (await canLaunchUrl(url))
+    if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
   }
 
   Future<void> _sendEmail(Map<String, dynamic> lead) async {

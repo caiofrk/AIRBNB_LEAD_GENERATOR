@@ -1,35 +1,31 @@
-# AIRBNB LEAD GENERATOR & SALES INTELLIGENCE (v1.5)
+# Projeto: AIRBNB_LEAD_GENERATOR (Luxo RJ)
+Status: v1.2.1 - Intelligence & Analytics Core Complete 🚀
 
-Este aplicativo foi desenvolvido para transformar a prospecção de imóveis de luxo no Rio de Janeiro em um processo baseado em dados e inteligência estratégica, focado em serviços de limpeza técnica e gestão premium.
+## ✅ Funcionalidades Implementadas
 
----
+1.  **Airbnb Fast Scraper**: Motor de coleta automatizada que extrai títulos, preços e links de bairros premium (Ipanema, Leblon, Barra, etc).
+2.  **Luxury Score v2 (Aritmético)**: Algoritmo de pontuação contínua (Float) baseado em preço real, contagem de fotos, palavras-chave e selos (Luxe/Plus).
+3.  **App Luxo RJ Dashboard (v1.2.1)**: Interface Flutter com Glassmorphism, busca em tempo real, filtros por bairro e ordenação inteligente.
+4.  **Equação de Taxa de Luxo**: Sistema de ranking competitivo que distribui os leads matematicamente de 0% a 100% com base no volume total da lista (N).
+5.  **Relatório de Combate (IA)**: Integração com Gemini 2.0 Flash Lite para analisar descrições e reviews, gerando automaticamente "Pontos de Dor" e "Ganchos de Venda".
+6.  **Inteligência de Vendas (Deep Analysis)**:
+    - **Gap de Limpeza**: Identifica reclamações específicas de limpeza em reviews <= 4 estrelas.
+    - **Fator de Escala**: Mapeia o tamanho do portfólio do anfitrião (Host Profissional vs Proprietário Solo).
+    - **Itens de Manutenção**: Identifica superfícies nobres (Mármore, Vidro) e automação.
+7.  **Rastreamento de Recência**: Exibição de timestamps relativos (ex: "há 2h") para priorização imediata de novos leads.
+8.  **Infraestrutura Híbrida & Watcher**: Sistema reativo via Supabase Realtime com modo "Watcher" no PC para processamento sob demanda vindo do app.
+9.  **Pipeline de Deploy**: Script automatizado (`publish_apk.ps1`) para build de APK e sincronização instantânea com GitHub.
 
-### 🚀 O QUE O APP FAZ ATUALMENTE:
-
-1.  **Scraping Geo-Localizado**: Captura automaticamente anúncios do Airbnb em 13 bairros de luxo (Ipanema, Leblon, Barra, Joá, etc.), filtrando apenas imóveis acima de R$ 1.000/noite.
-2.  **Luxury Score (0-100)**: Atribui uma nota de qualidade baseada em preço, palavras-chave no título (Cobertura, Penthouse) e insígnias do Airbnb.
-3.  **Inteligência Sob Demanda**: 
-    - Ao selecionar um imóvel, o usuário pode clicar em "Gerar Inteligência Detalhada".
-    - O sistema via PC ou Nuvem (GitHub Actions) analisa a descrição completa do anúncio em segundos.
-4.  **Hooks de Venda (Gatilhos):**
-    - **Gap de Limpeza (Filtro Inteligente)**: O scraper ignora avaliações de 5 estrelas e foca exclusivamente em comentários de **4 estrelas ou menos**. Isso garante que capturemos reclamações reais de falta de atenção aos detalhes (ex: "baseboards are dusty", "poeira") em vez de elogios genéricos.
-    - **Manutenção Técnica**: Detecta itens que exigem cuidado especial (Paredes de vidro, mármore, cafeteiras profissionais, piscinas aquecidas).
-    - **Análise de Portfólio**: Identifica se o host é um profissional (múltiplos imóveis) ou proprietário solo.
-5.  **Pitch Generator Dinâmico**: Gera automaticamente um rascunho de e-mail (ou WhatsApp futuramente) personalizado, citando os problemas específicos encontrados no imóvel para aumentar a conversão.
-6.  **Rastreamento de Recência**: Exibição em tempo real de quanto tempo atrás o lead foi descoberto (ex: "Há 2h", "Há 1d"), permitindo priorizar os imóveis mais novos.
-7.  **Relatório de Combate (IA)**: Integração com Gemini 1.5 Flash para gerar automaticamente um resumo de "Pontos de Dor" e "Ganchos de Venda" para cada imóvel.
-8.  **Infraestrutura Híbrida**: Funciona de forma reativa com Supabase Realtime. Atualizações feitas no PC aparecem instantaneamente no celular.
-
----
-
-### 🗺️ ROADMAP (PRÓXIMAS IMPLEMENTAÇÕES):
-
-1.  **Integração WhatsApp**: Automação de envio de mensagens via API ou intents nativos, adaptando o Pitch Generator para o tom de conversa do Zap.
-2.  **Visão por Mapa (Map View)**: Visualização dos leads em um mapa do Rio de Janeiro para otimização de rotas de visita física.
-3.  **CRM / Pipeline de Vendas**: Estados de funil para o lead (Novo -> Contatado -> Negociação -> Fechado).
-4.  **Enriquecimento Extra (IA)**: Uso de LLMs (GPT-4/Gemini) para resumir centenas de reviews e encontrar padrões de falha de gestão ainda mais sutis.
-5.  **Notificações Push**: Receber um alerta no celular assim que um novo lead de "Score 95+" aparecer na Barra da Tijuca.
-6.  **Dashboard Financeiro**: Estimativa de quanto aquele lead pode gerar em contrato mensal baseado no valor da diária.
+## �️ Tecnologias Utilizadas
+- **Backend**: Python (Selenium, BeautifulSoup4, Supabase-py).
+- **Frontend**: Flutter (Material 3, Supabase Flutter, Glassmorphism).
+- **IA**: Google Generative AI (Gemini 2.0 Flash Lite).
+- **DB/Realtime**: Supabase (PostgreSQL & Realtime Streams).
 
 ---
-Caio, este é o estado atual do projeto. Estamos construindo uma ferramenta que não apenas encontra contatos, mas entrega a munição necessária para fechar o contrato.
+
+## 📋 Próximos Passos (Backlog)
+- [ ] **Integração Direta WhatsApp**: Gerar mensagem pré-preenchida com os ganchos da IA.
+- [ ] **Modo Map View**: Visualização geográfica dos leads premium no RJ.
+- [ ] **CRM Simples**: Mudar status do lead para "Negociando", "Rejeitado", etc.
+- [ ] **Relatórios em PDF**: Exportar dossiê de inteligência para envio ao cliente.

@@ -51,30 +51,37 @@ if GOOGLE_API_KEY:
 else:
     print("⚠️ Warning: GOOGLE_API key missing. AI intelligence will be skipped.")
 
-def get_ai_intelligence(description, reviews):
-    """Uses Gemini 1.5 Flash (New SDK) with retry logic to handle free tier quotas."""
+def get_ai_intelligence(description, title, price, photos, reviews, bairro, anfitriao):
+    """Unified AI Intelligence: Returns JSON with Lux Score, Combat Report, and WA Hook."""
     if not ai_client:
         return None
     
     prompt = f"""
-    Você é um analista sênior de hospitalidade de luxo. 
-    Analise a descrição e as avaliações deste imóvel no Airbnb e crie um 'Relatório de Combate' para um vendedor.
-    
-    DESCRIÇÃO: {description[:1500]}
-    AVALIAÇÕES RECENTES: {reviews[:1500]}
-    
-    Siga exatamente este formato:
-    - DOR: [A maior falha encontrada: limpeza, manutenção ou gestão?]
-    - GANCHO: [Um argumento curto e matador em Português para convencer o dono a mudar de gestão]
-    
-    Seja direto e use um tom profissional porem persuasivo. Máximo 3 linhas no total.
+    Você é um classificador de imóveis de luxo e mestre em vendas. 
+    Analise o imóvel abaixo e responda estritamente no formato JSON:
+    {{
+      "luxury": float (0.0 a 1.0),
+      "reason": "por que ele tem esse score?",
+      "combat_report": {{ "dor": "...", "gancho": "..." }},
+      "wa_hook": "Frase de 90 chars p/ WhatsApp vendendo limpeza/gestão baseada nos problemas detectados."
+    }}
+
+    DADOS:
+    - Título: {title}
+    - Preço: R$ {price}/noite
+    - Fotos: {photos}
+    - Bairro: {bairro}
+    - Host: {anfitriao}
+    - Descrição: {description[:1000]}
+    - Reviews: {reviews[:1000]}
     """
 
     for attempt in range(3):
         try:
             response = ai_client.models.generate_content(
                 model='gemini-2.0-flash-lite',
-                contents=prompt
+                contents=prompt,
+                config={'response_mime_type': 'application/json'}
             )
             return response.text.strip()
         except Exception as e:
@@ -187,20 +194,39 @@ def deep_analyze_listing(driver, lead_id, url):
             m = re.search(r'(\d+)\s+anúncios', txt)
             updates['host_portfolio_size'] = int(m.group(1)) if m else 1
 
-        # 5. AI Sales Intelligence (Gemini)
-        print("      [AI] Generating Combat Report...")
+        # 5. AI Sales Intelligence (Gemini 2.0 Unified)
+        print("      [AI] Generating Unified Intelligence & Hooks...")
         all_reviews_text = " | ".join(gap_mentions)
-        ai_report = get_ai_intelligence(description, all_reviews_text)
-        if ai_report:
-            updates['ai_report'] = ai_report
-            # Fallback: Store inside description in case column is missing
-            updates['descricao'] = f"--- RELATÓRIO DE COMBATE IA ---\n{ai_report}\n\n{description}"
-        else:
-            updates['descricao'] = description
+        
+        # Get host name and neighborhood from the lead row if possible
+        lead_data = supabase.table("leads").select("titulo, preco_noite, bairro, anfitriao, badges").eq("id", lead_id).single().execute()
+        l = lead_data.data or {}
+        
+        ai_json = get_ai_intelligence(
+            description, 
+            l.get('titulo', ''), 
+            l.get('preco_noite', 0), 
+            len(soup.select('img')), # Quick photo count
+            all_reviews_text,
+            l.get('bairro', ''),
+            l.get('anfitriao', 'Proprietário')
+        )
+        
+        if ai_json:
+            updates['ai_report'] = ai_json # Now storing JSON
+            # Fallback: Tag description for easy parsing
+            updates['descricao'] = f"--- AI_INTEL_JSON ---\n{ai_json}\n\n{description}"
+            
+            # Extract score if possible to update lux_score column
+            try:
+                import json
+                parsed = json.loads(ai_json)
+                updates['lux_score'] = int(parsed.get('luxury', 0.5) * 100)
+            except: pass
 
         if supabase:
             supabase.table("leads").update(updates).eq("id", lead_id).execute()
-        print(f"      [DONE] Intelligence generated for lead {lead_id}.")
+        print(f"      [DONE] Strategic Intelligence generated for lead {lead_id}.")
         
     except Exception as e:
         print(f"    [!] Deep Analysis Error: {e}")
