@@ -258,14 +258,14 @@ class _DashboardPageState extends State<DashboardPage> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
-                        'v1.2.4',
+                        'v1.2.5',
                         style: TextStyle(fontSize: 10, color: Colors.white38),
                       ),
                     ),
                   ],
                 ),
                 Text(
-                  'Inteligência Imobiliária',
+                  'Inteligência Imobiliária | powered by zaibatsu.tec',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.white.withOpacity(0.5),
@@ -858,6 +858,21 @@ class _DashboardPageState extends State<DashboardPage> {
                   'Fator de Escala',
                   'Host possui ${lead['host_portfolio_size'] ?? 1} imóvel(is)',
                   Colors.greenAccent,
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () => _requestIntelligence(lead['id']),
+                    icon: const Icon(
+                      Icons.refresh,
+                      size: 16,
+                      color: Colors.white38,
+                    ),
+                    label: const Text(
+                      'Regenerar Inteligência',
+                      style: TextStyle(color: Colors.white38, fontSize: 12),
+                    ),
+                  ),
                 ),
               ] else
                 _buildActionButton(
