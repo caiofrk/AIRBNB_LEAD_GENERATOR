@@ -1,5 +1,5 @@
-# Projeto: AIRBNB_LEAD_GENERATOR (Luxo RJ)
-Status: v1.2.2 - AI Sales Strategy & Unified Intelligence 🚀
+# Projeto: Zai Lead Generator
+Status: v1.2.4 - Host Profile Depth & Branding Update 🚀
 
 ## ✅ Funcionalidades Implementadas
 
@@ -9,10 +9,7 @@ Status: v1.2.2 - AI Sales Strategy & Unified Intelligence 🚀
 4.  **WhatsApp Hook Estratégico**: Geração de frases de 90 caracteres otimizadas para conversão baseadas nos "Gaps de Limpeza", prontas para envio imediato via WhatsApp.
 5.  **Equação de Taxa de Luxo (Market Ranking)**: Sistema de ranking competitivo que distribui os leads matematicamente de 0% a 100% com base no volume total da lista (N).
 6.  **Relatório de Combate Global**: Análise unificada de "Dor" e "Gancho" consolidada em um único objeto de inteligência, reduzindo a latência da API.
-7.  **Inteligência de Vendas (Deep Analysis)**:
-    - **Gap de Limpeza**: Identifica reclamações específicas de limpeza em reviews <= 4 estrelas.
-    - **Fator de Escala**: Mapeia o tamanho do portfólio do anfitrião (Host Profissional vs Proprietário Solo).
-    - **Itens de Manutenção**: Identifica superfícies nobres (Mármore, Vidro) e automação.
+7.  **Fator de Escala (Profile Depth)**: O scraper agora visita o perfil real do anfitrião para obter a contagem exata de anúncios (ex: Detectando 41 anúncios em vez de 1), essencial para identificar imobiliárias boutique (Casapē).
 8.  **Datas de Busca Dinâmicas**: O scraper agora calcula janelas de disponibilidade de 3 noites com 14 dias de antecedência de forma autônoma.
 9.  **Infraestrutura Híbrida & Watcher**: Sistema reativo via Supabase Realtime com modo "Watcher" no PC para processamento sob demanda vindo do app.
 10. **Pipeline de Deploy**: Script automatizado (`publish_apk.ps1`) para build de APK e sincronização instantânea com GitHub.

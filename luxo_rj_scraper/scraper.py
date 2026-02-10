@@ -199,46 +199,50 @@ def deep_analyze_listing(driver, lead_id, url):
                 l['badges'].append("Superhost")
                 updates['badges'] = l['badges']
             
-            # Other listings count
-            m = re.search(r'(\d+)\s+anúncios', txt.lower())
-            updates['host_portfolio_size'] = int(m.group(1)) if m else 1
-            
-            # Host Link & Profile Scraping
-            host_link_el = host_section.select_one('a[href*="/users/show/"]')
-            if host_link_el and is_superhost:
+            # 4. Host Profile Discovery & Portfolio Scraping
+            host_link_el = host_section.select_one('a[href*="/users/show/"], a[href*="/users/profile/"]')
+            if host_link_el:
                 host_url = "https://www.airbnb.com.br" + host_link_el['href']
-                print(f"      [Host] Visiting Superhost profile: {host_url}")
+                print(f"      [Host] Visiting profile to verify portfolio: {host_url}")
                 try:
-                    # Save current window handle
-                    original_window = driver.current_window_handle
-                    # Open in new tab to preserve PDP state if needed, or just navigate
                     driver.get(host_url)
-                    time.sleep(5) # Wait for profile to load
+                    time.sleep(6) # Give extra time for profile data
                     host_soup = BeautifulSoup(driver.page_source, 'html.parser')
                     
-                    # Find listings in profile
-                    # Often listed under 'Listings' or 'Anúncios' section
+                    # A) Accurate Portfolio Count (Fator de Escala)
+                    # Look for the "See all listings" text which contains the TRUE count
+                    profile_text = host_soup.get_text()
+                    # Pattern: "Ver os 41 anúncios", "See all 41 listings", etc.
+                    count_match = re.search(r'([Vv]er os|[Ss]ee all)\s+(\d+)\s+(anúncios|listings)', profile_text)
+                    if count_match:
+                        updates['host_portfolio_size'] = int(count_match.group(2))
+                        print(f"      [Host] TRUE Portfolio Size Identified: {updates['host_portfolio_size']}")
+                    else:
+                        # Fallback: Count visible cards
+                        cards = host_soup.select('div[data-testid="listing-card-title"], div[data-testid="card-container"]')
+                        updates['host_portfolio_size'] = max(1, len(cards))
+                    
+                    # B) Scrape the properties
+                    # If there's a "See all" link, we could follow it, but for now we take the visible ones
                     cards = host_soup.select('div[data-testid="listing-card-title"], div[data-testid="card-container"]')
                     seen_links = set()
                     for card in cards:
                         link_el = card.select_one('a[href*="/rooms/"]') or card.find_parent('a', href=True)
                         if link_el:
                             l_url = "https://airbnb.com.br" + link_el['href'].split('?')[0]
+                            # Extract clean title
                             l_title = card.get_text(strip=True).replace('Novo listing', '').strip()
                             if l_url not in seen_links and "/rooms/" in l_url:
                                 other_listings.append({"title": l_title, "url": l_url})
                                 seen_links.add(l_url)
                     
-                    print(f"      [Host] Found {len(other_listings)} other properties.")
-                    # Go back to listing
+                    print(f"      [Host] Cataloged {len(other_listings)} reference properties.")
                     driver.back()
-                    time.sleep(4)
+                    time.sleep(3)
                 except Exception as he:
-                    print(f"      [!] Host Profile Scraping Error: {he}")
-                    # Try to go back if failed
+                    print(f"      [!] Profile Scraping Depth Error: {he}")
                     try: driver.back()
                     except: pass
-                    time.sleep(2)
         
         # 4.5 Precise Price Verification (Booking Widget)
         try:

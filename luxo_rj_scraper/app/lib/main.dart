@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Leads de Luxo RJ',
+      title: 'Zai Lead Generator',
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF0F172A),
@@ -239,7 +239,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 Row(
                   children: [
                     const Text(
-                      'Luxo RJ',
+                      'Zai',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -258,7 +258,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
-                        'v1.2.3',
+                        'v1.2.4',
                         style: TextStyle(fontSize: 10, color: Colors.white38),
                       ),
                     ),
