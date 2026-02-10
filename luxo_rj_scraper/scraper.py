@@ -188,11 +188,70 @@ def deep_analyze_listing(driver, lead_id, url):
             print(f"      [!] Found {len(gap_mentions)} critical reviews.")
 
         # 4. Host Info
-        host_profile = soup.select_one('div[data-testid="pdp-host-profile-section"]')
-        if host_profile:
-            txt = host_profile.get_text().lower()
-            m = re.search(r'(\d+)\s+anúncios', txt)
+        host_section = soup.select_one('div[data-testid="pdp-host-profile-section"]')
+        other_listings = []
+        if host_section:
+            txt = host_section.get_text()
+            # Superhost check
+            is_superhost = "superhost" in txt.lower()
+            if 'badges' not in l: l['badges'] = []
+            if is_superhost and "Superhost" not in l['badges']:
+                l['badges'].append("Superhost")
+                updates['badges'] = l['badges']
+            
+            # Other listings count
+            m = re.search(r'(\d+)\s+anúncios', txt.lower())
             updates['host_portfolio_size'] = int(m.group(1)) if m else 1
+            
+            # Host Link & Profile Scraping
+            host_link_el = host_section.select_one('a[href*="/users/show/"]')
+            if host_link_el and is_superhost:
+                host_url = "https://www.airbnb.com.br" + host_link_el['href']
+                print(f"      [Host] Visiting Superhost profile: {host_url}")
+                try:
+                    # Save current window handle
+                    original_window = driver.current_window_handle
+                    # Open in new tab to preserve PDP state if needed, or just navigate
+                    driver.get(host_url)
+                    time.sleep(5) # Wait for profile to load
+                    host_soup = BeautifulSoup(driver.page_source, 'html.parser')
+                    
+                    # Find listings in profile
+                    # Often listed under 'Listings' or 'Anúncios' section
+                    cards = host_soup.select('div[data-testid="listing-card-title"], div[data-testid="card-container"]')
+                    seen_links = set()
+                    for card in cards:
+                        link_el = card.select_one('a[href*="/rooms/"]') or card.find_parent('a', href=True)
+                        if link_el:
+                            l_url = "https://airbnb.com.br" + link_el['href'].split('?')[0]
+                            l_title = card.get_text(strip=True).replace('Novo listing', '').strip()
+                            if l_url not in seen_links and "/rooms/" in l_url:
+                                other_listings.append({"title": l_title, "url": l_url})
+                                seen_links.add(l_url)
+                    
+                    print(f"      [Host] Found {len(other_listings)} other properties.")
+                    # Go back to listing
+                    driver.back()
+                    time.sleep(4)
+                except Exception as he:
+                    print(f"      [!] Host Profile Scraping Error: {he}")
+                    # Try to go back if failed
+                    try: driver.back()
+                    except: pass
+                    time.sleep(2)
+        
+        # 4.5 Precise Price Verification (Booking Widget)
+        try:
+            booking_price_el = soup.select_one('span._1y74zjx, [data-testid="price-summary-total-price"]')
+            if booking_price_el:
+                p_text = booking_price_el.get_text()
+                p_digits = ''.join(filter(str.isdigit, p_text.split(',')[0].replace('.', '')))
+                if p_digits:
+                    raw_p = int(p_digits)
+                    # Use a 3-night fallback as set in the main scraper
+                    updates['preco_noite'] = int(raw_p / 3)
+                    print(f"      [Price] Verified: R$ {updates['preco_noite']}/night")
+        except: pass
 
         # 5. AI Sales Intelligence (Gemini 2.0 Unified)
         print("      [AI] Generating Unified Intelligence & Hooks...")
@@ -215,7 +274,12 @@ def deep_analyze_listing(driver, lead_id, url):
         if ai_json:
             updates['ai_report'] = ai_json # Now storing JSON
             # Fallback: Tag description for easy parsing
-            updates['descricao'] = f"--- AI_INTEL_JSON ---\n{ai_json}\n\n{description}"
+            desc_intel = f"--- AI_INTEL_JSON ---\n{ai_json}\n---"
+            host_intel = ""
+            if other_listings:
+                host_intel = f"--- HOST_LISTINGS_JSON ---\n{json.dumps(other_listings)}\n---"
+            
+            updates['descricao'] = f"{desc_intel}\n{host_intel}\n\n{description}"
             
             # Extract score if possible to update lux_score column
             try:
@@ -278,11 +342,22 @@ def scrape_main_leads():
                     title_el = item.select_one('div[data-testid="listing-card-title"]')
                     title = title_el.get_text(strip=True) if title_el else "Luxury Property"
                     
-                    price_el = item.select_one('div[data-testid="price-availability-row"] > div > span:last-child')
+                    price_el = item.select_one('div[data-testid="price-availability-row"] div, [data-testid="price-summary-total-price"]')
                     price = 1000
                     if price_el:
-                        digits = ''.join(filter(str.isdigit, price_el.get_text().split(',')[0].replace('.', '')))
-                        price = int(int(digits) / num_nights) if digits else 1000
+                        price_text = price_el.get_text()
+                        # Detect total price vs nightly price
+                        nights_match = re.search(r'por (\d+) noit', price_text)
+                        denom = int(nights_match.group(1)) if nights_match else 1
+                        
+                        digits = ''.join(filter(str.isdigit, price_text.split(',')[0].replace('.', '')))
+                        if digits:
+                            found_val = int(digits)
+                            # If it's a total, divide. If it's already low, it might be nightly.
+                            if denom > 1 or found_val > 5000:
+                                price = int(found_val / (denom if denom > 1 else num_nights))
+                            else:
+                                price = found_val
 
                     link_el = item.find('a', href=True)
                     link = "https://airbnb.com.br" + link_el['href'].split('?')[0] if link_el else ""

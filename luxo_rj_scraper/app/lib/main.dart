@@ -258,7 +258,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
-                        'v1.2.2',
+                        'v1.2.3',
                         style: TextStyle(fontSize: 10, color: Colors.white38),
                       ),
                     ),
@@ -632,6 +632,24 @@ class _DashboardPageState extends State<DashboardPage> {
     return {};
   }
 
+  List<dynamic> _parseHostListings(Map<String, dynamic> lead) {
+    try {
+      if (lead['descricao'] != null) {
+        final desc = lead['descricao'] as String;
+        if (desc.contains('--- HOST_LISTINGS_JSON ---')) {
+          final raw = desc
+              .split('--- HOST_LISTINGS_JSON ---')
+              .last
+              .split('---')
+              .first
+              .trim();
+          return jsonDecode(raw);
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
   Widget _buildReactiveDetailSheet(dynamic leadId, {double? initialScore}) {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _client.from('leads').stream(primaryKey: ['id']).eq('id', leadId),
@@ -719,6 +737,66 @@ class _DashboardPageState extends State<DashboardPage> {
                 'Anfitrião',
                 lead['anfitriao'] ?? 'N/A',
               ),
+              const SizedBox(height: 32),
+              // Superhost & Portfolio Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Sobre o Anfitrião',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  if (lead['badges']?.contains("Superhost") ?? false)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.pink.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.pink.withOpacity(0.3)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.verified, color: Colors.pink, size: 14),
+                          SizedBox(width: 4),
+                          Text(
+                            'SUPERHOST',
+                            style: TextStyle(
+                              color: Colors.pink,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildDetailRow(
+                Icons.business_center_outlined,
+                'Fator de Escala',
+                '${lead['host_portfolio_size'] ?? 1} imóvel(is)',
+              ),
+              ...() {
+                final hostListings = _parseHostListings(lead);
+                if (hostListings.isNotEmpty) {
+                  return [
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Outros imóveis deste host:',
+                      style: TextStyle(fontSize: 12, color: Colors.white38),
+                    ),
+                    const SizedBox(height: 12),
+                    ...hostListings
+                        .map((hl) => _buildHostListingItem(hl))
+                        .toList(),
+                  ];
+                }
+                return <Widget>[];
+              }(),
               const SizedBox(height: 32),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -836,6 +914,37 @@ class _DashboardPageState extends State<DashboardPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHostListingItem(dynamic listing) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.maps_home_work_outlined,
+            color: Colors.white24,
+            size: 16,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              listing['title'] ?? 'Listing sem título',
+              style: const TextStyle(fontSize: 13, color: Colors.white70),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 12),
+        ],
       ),
     );
   }

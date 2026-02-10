@@ -1,31 +1,32 @@
 # Projeto: AIRBNB_LEAD_GENERATOR (Luxo RJ)
-Status: v1.2.1 - Intelligence & Analytics Core Complete 🚀
+Status: v1.2.2 - AI Sales Strategy & Unified Intelligence 🚀
 
 ## ✅ Funcionalidades Implementadas
 
 1.  **Airbnb Fast Scraper**: Motor de coleta automatizada que extrai títulos, preços e links de bairros premium (Ipanema, Leblon, Barra, etc).
-2.  **Luxury Score v2 (Aritmético)**: Algoritmo de pontuação contínua (Float) baseado em preço real, contagem de fotos, palavras-chave e selos (Luxe/Plus).
-3.  **App Luxo RJ Dashboard (v1.2.1)**: Interface Flutter com Glassmorphism, busca em tempo real, filtros por bairro e ordenação inteligente.
-4.  **Equação de Taxa de Luxo**: Sistema de ranking competitivo que distribui os leads matematicamente de 0% a 100% com base no volume total da lista (N).
-5.  **Relatório de Combate (IA)**: Integração com Gemini 2.0 Flash Lite para analisar descrições e reviews, gerando automaticamente "Pontos de Dor" e "Ganchos de Venda".
-6.  **Inteligência de Vendas (Deep Analysis)**:
+2.  **Classificador IA de Luxo (Unified JSON)**: Substituição de regras aritméticas por um modelo de avaliação profissional via Gemini 2.0 (0.0 a 1.0). Analisa título, preço, fotos e descrição em conjunto.
+3.  **App Luxo RJ Dashboard (v1.2.2)**: Interface Flutter otimizada com consumo de JSON estruturado, tempo de resposta aprimorado e suporte a visualização de inteligência unificada.
+4.  **WhatsApp Hook Estratégico**: Geração de frases de 90 caracteres otimizadas para conversão baseadas nos "Gaps de Limpeza", prontas para envio imediato via WhatsApp.
+5.  **Equação de Taxa de Luxo (Market Ranking)**: Sistema de ranking competitivo que distribui os leads matematicamente de 0% a 100% com base no volume total da lista (N).
+6.  **Relatório de Combate Global**: Análise unificada de "Dor" e "Gancho" consolidada em um único objeto de inteligência, reduzindo a latência da API.
+7.  **Inteligência de Vendas (Deep Analysis)**:
     - **Gap de Limpeza**: Identifica reclamações específicas de limpeza em reviews <= 4 estrelas.
     - **Fator de Escala**: Mapeia o tamanho do portfólio do anfitrião (Host Profissional vs Proprietário Solo).
     - **Itens de Manutenção**: Identifica superfícies nobres (Mármore, Vidro) e automação.
-7.  **Rastreamento de Recência**: Exibição de timestamps relativos (ex: "há 2h") para priorização imediata de novos leads.
-8.  **Infraestrutura Híbrida & Watcher**: Sistema reativo via Supabase Realtime com modo "Watcher" no PC para processamento sob demanda vindo do app.
-9.  **Pipeline de Deploy**: Script automatizado (`publish_apk.ps1`) para build de APK e sincronização instantânea com GitHub.
+8.  **Datas de Busca Dinâmicas**: O scraper agora calcula janelas de disponibilidade de 3 noites com 14 dias de antecedência de forma autônoma.
+9.  **Infraestrutura Híbrida & Watcher**: Sistema reativo via Supabase Realtime com modo "Watcher" no PC para processamento sob demanda vindo do app.
+10. **Pipeline de Deploy**: Script automatizado (`publish_apk.ps1`) para build de APK e sincronização instantânea com GitHub.
 
-## �️ Tecnologias Utilizadas
+## 🛠️ Tecnologias Utilizadas
 - **Backend**: Python (Selenium, BeautifulSoup4, Supabase-py).
 - **Frontend**: Flutter (Material 3, Supabase Flutter, Glassmorphism).
-- **IA**: Google Generative AI (Gemini 2.0 Flash Lite).
+- **IA**: Google Generative AI (Gemini 2.0 Flash Lite - JSON Response Mode).
 - **DB/Realtime**: Supabase (PostgreSQL & Realtime Streams).
 
 ---
 
 ## 📋 Próximos Passos (Backlog)
-- [ ] **Integração Direta WhatsApp**: Gerar mensagem pré-preenchida com os ganchos da IA.
-- [ ] **Modo Map View**: Visualização geográfica dos leads premium no RJ.
-- [ ] **CRM Simples**: Mudar status do lead para "Negociando", "Rejeitado", etc.
-- [ ] **Relatórios em PDF**: Exportar dossiê de inteligência para envio ao cliente.
+- [ ] **Integração CRM v1**: Mudar status do lead para "Negociando", "Rejeitado" ou "Ganho".
+- [ ] **Modo Map View**: Visualização geográfica dos leads premium no RJ com clusters.
+- [ ] **Lead Export**: Exportar dossiê de inteligência formatado para PDF ou Planilha.
+- [ ] **Multi-Target Scraper**: Selecionar múltiplos leads no app para disparar análise em massa no PC.
