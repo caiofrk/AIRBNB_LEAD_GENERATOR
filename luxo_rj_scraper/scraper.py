@@ -12,7 +12,22 @@ from supabase import create_client, Client
 from dotenv import load_dotenv
 from google import genai
 from datetime import datetime, timedelta
+import json
 
+def get_driver_options():
+    """Returns optimized Chrome options to force DESKTOP behavior."""
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("window-size=1920,1080")
+    # Professional Desktop User-Agent
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
+    return options
 # Load environment variables
 load_dotenv()
 
@@ -203,17 +218,22 @@ def deep_analyze_listing(driver, lead_id, url):
             host_link_el = host_section.select_one('a[href*="/users/show/"], a[href*="/users/profile/"]')
             if host_link_el:
                 host_url = "https://www.airbnb.com.br" + host_link_el['href']
-                print(f"      [Host] Visiting profile to verify portfolio: {host_url}")
+                print(f"      [Host] Visiting profile (Desktop Mode): {host_url}")
                 try:
                     driver.get(host_url)
-                    time.sleep(6) # Give extra time for profile data
+                    time.sleep(7) # Extra time for profile layout
+                    
+                    # Scroll a bit to trigger lazy loading
+                    driver.execute_script("window.scrollTo(0, 800);")
+                    time.sleep(2)
+                    
                     host_soup = BeautifulSoup(driver.page_source, 'html.parser')
                     
                     # A) Accurate Portfolio Count (Fator de Escala)
                     # Look for the "See all listings" text which contains the TRUE count
                     profile_text = host_soup.get_text()
-                    # Pattern: "Ver os 41 anúncios", "See all 41 listings", etc.
-                    count_match = re.search(r'([Vv]er os|[Ss]ee all)\s+(\d+)\s+(anúncios|listings)', profile_text)
+                    # Pattern: "Ver os 41 anúncios", "See all 41 listings", "41 acomodações", etc.
+                    count_match = re.search(r'([Vv]er os|[Ss]ee all)?\s*(\d+)\s*(anúncios|listings|acomodações|places)', profile_text)
                     if count_match:
                         updates['host_portfolio_size'] = int(count_match.group(2))
                         print(f"      [Host] TRUE Portfolio Size Identified: {updates['host_portfolio_size']}")
@@ -277,13 +297,18 @@ def deep_analyze_listing(driver, lead_id, url):
         
         if ai_json:
             updates['ai_report'] = ai_json # Now storing JSON
+            
+            # Clean up old tags in description if they exist
+            import re
+            clean_desc = re.sub(r'--- (AI_INTEL|HOST_LISTINGS)_JSON ---.*?---', '', description, flags=re.DOTALL).strip()
+            
             # Fallback: Tag description for easy parsing
             desc_intel = f"--- AI_INTEL_JSON ---\n{ai_json}\n---"
             host_intel = ""
             if other_listings:
                 host_intel = f"--- HOST_LISTINGS_JSON ---\n{json.dumps(other_listings)}\n---"
             
-            updates['descricao'] = f"{desc_intel}\n{host_intel}\n\n{description}"
+            updates['descricao'] = f"{desc_intel}\n{host_intel}\n\n{clean_desc}"
             
             # Extract score if possible to update lux_score column
             try:
@@ -316,13 +341,7 @@ def scrape_main_leads():
     checkout = checkout_dt.strftime("%Y-%m-%d")
     num_nights = 3
     
-    options = Options()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("window-size=1920,1080")
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+    options = get_driver_options()
     
     try:
         service = Service(ChromeDriverManager().install())
@@ -404,10 +423,7 @@ def start_watcher():
             
             if pending.data:
                 print(f"🔔 Request Detected! Processing {len(pending.data)} lead(s)...")
-                options = Options()
-                options.add_argument("--headless=new")
-                options.add_argument("--no-sandbox")
-                options.add_argument("--disable-dev-shm-usage")
+                options = get_driver_options()
                 
                 service = Service(ChromeDriverManager().install())
                 driver = webdriver.Chrome(service=service, options=options)
@@ -439,8 +455,7 @@ if __name__ == "__main__":
         url = mode.split('?')[0] # Clean URL
         print(f"🎯 Targeted Analysis: {url}")
         
-        options = Options()
-        options.add_argument("--headless=new")
+        options = get_driver_options()
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
         
