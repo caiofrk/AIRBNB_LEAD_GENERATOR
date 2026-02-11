@@ -299,102 +299,78 @@ def deep_analyze_listing(driver, lead_id, url):
 # PHASE 2 — AI ENRICHMENT (on already-scraped data)
 # ──────────────────────────────────────────────
 def enrich_with_ai():
-    """Runs AI classification on leads that have been scraped but not
-    yet enriched. No Selenium needed — reads from DB only."""
+    """Takes maintenance_items from scraped leads and generates a
+    short sales pitch. Ultra-lightweight — no heavy classification."""
     try:
         from google import genai
         ai_client = genai.Client(api_key=GOOGLE_API_KEY)
-        print("✅ Gemini AI initialized for enrichment.")
+        print("✅ Gemini connected.")
     except Exception as e:
         print(f"❌ Cannot initialize Gemini: {e}")
         return
 
-    # Fetch all scraped leads that don't yet have an ai_report
+    # Fetch scraped leads
     rows = supabase.table("leads").select(
-        "id, titulo, preco_noite, bairro, anfitriao, descricao, "
-        "cleanliness_gap, host_portfolio_size"
+        "id, titulo, maintenance_items, cleanliness_gap, anfitriao"
     ).eq("intelligence_status", "scraped").execute()
 
     if not rows.data:
-        print("    No scraped leads awaiting AI enrichment.")
+        print("    No scraped leads awaiting AI.")
         return
 
-    print(f"🧠 Enriching {len(rows.data)} leads with AI...")
+    print(f"🧠 Generating pitches for {len(rows.data)} leads...")
 
     for lead in rows.data:
         lid = lead['id']
-        desc = lead.get('descricao', '') or ''
-        reviews = lead.get('cleanliness_gap', '') or ''
         title = lead.get('titulo', '') or ''
-        price = lead.get('preco_noite', 0) or 0
-        bairro = lead.get('bairro', '') or ''
-        host = lead.get('anfitriao', '') or 'Proprietário'
+        maint = lead.get('maintenance_items') or []
+        gap = lead.get('cleanliness_gap') or ''
+        host = lead.get('anfitriao') or 'Proprietário'
 
-        prompt = f"""
-Você é um classificador de imóveis de luxo e mestre em vendas.
-Analise o imóvel abaixo e responda estritamente no formato JSON:
-{{
-  "luxury": float (0.0 a 1.0),
-  "reason": "por que ele tem esse score?",
-  "combat_report": {{ "dor": "...", "gancho": "..." }},
-  "wa_hook": "Frase de 90 chars p/ WhatsApp vendendo limpeza baseada nos problemas."
-}}
+        # Build context from what we scraped
+        keywords = ', '.join(maint) if maint else 'Nenhum item especial'
+        
+        prompt = (
+            f"Imóvel: {title}\n"
+            f"Host: {host}\n"
+            f"Itens de manutenção: {keywords}\n"
+            f"Problemas de limpeza: {gap[:200] if gap else 'Nenhum'}\n\n"
+            f"Crie uma frase de venda de 1 linha (máx 90 caracteres) "
+            f"oferecendo serviço de limpeza/gestão profissional para este imóvel. "
+            f"Foque nos itens de manutenção. Responda APENAS a frase, nada mais."
+        )
 
-DADOS:
-- Título: {title}
-- Preço: R$ {price}/noite
-- Bairro: {bairro}
-- Host: {host}
-- Portfolio: {lead.get('host_portfolio_size', 1)} imóveis
-- Descrição: {desc[:1000]}
-- Reviews negativos: {reviews[:500]}
-"""
-        print(f"    [{lid[:8]}] AI enriching '{title[:30]}'...")
+        print(f"    [{lid[:8]}] '{title[:30]}' → maint: {keywords}")
 
-        ai_json = None
+        pitch = None
         for attempt in range(3):
             try:
                 resp = ai_client.models.generate_content(
                     model='gemini-2.0-flash-lite',
-                    contents=prompt,
-                    config={'response_mime_type': 'application/json'}
+                    contents=prompt
                 )
-                ai_json = resp.text.strip()
+                pitch = resp.text.strip()[:120]  # Cap length
                 break
             except Exception as e:
                 if "429" in str(e):
-                    wait = 60 * (attempt + 1)
+                    wait = 30 * (attempt + 1)
                     print(f"      [AI] Quota hit. Waiting {wait}s...")
                     time.sleep(wait)
                     continue
                 print(f"      [!] Gemini error: {e}")
                 break
 
-        if ai_json:
+        if pitch:
             upd = {
-                "ai_report": ai_json,
+                "ai_report": pitch,
                 "intelligence_status": "ready"
             }
-            try:
-                parsed = json.loads(ai_json)
-                upd['lux_score'] = int(parsed.get('luxury', 0.5) * 100)
-            except:
-                pass
-
-            # Append AI block to description
-            clean = re.sub(
-                r'--- AI_INTEL_JSON ---.*?---', '', desc,
-                flags=re.DOTALL).strip()
-            ai_block = f"--- AI_INTEL_JSON ---\n{ai_json}\n---"
-            upd['descricao'] = f"{ai_block}\n\n{clean}"
-
             supabase.table("leads").update(upd).eq("id", lid).execute()
-            print(f"      ✅ AI done. Score: {upd.get('lux_score', '?')}")
+            print(f"      ✅ Pitch: \"{pitch}\"")
         else:
-            print(f"      ⚠️ AI returned nothing for {lid[:8]}.")
+            print(f"      ⚠️ No pitch generated for {lid[:8]}.")
 
-        # Be polite to the API
-        time.sleep(2)
+        time.sleep(1)  # Be gentle
 
     print("🧠 AI enrichment complete.")
 

@@ -824,19 +824,13 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               const SizedBox(height: 16),
               if (lead['intelligence_status'] == 'ready') ...[
-                if (aiIntel.containsKey('combat_report'))
+                if (lead['ai_report'] != null &&
+                    (lead['ai_report'] as String).isNotEmpty)
                   _buildIntelligenceCard(
-                    Icons.psychology_outlined,
-                    'Relatório de Combate (IA)',
-                    "DOR: ${aiIntel['combat_report']['dor']}\nGANCHO: ${aiIntel['combat_report']['gancho']}",
+                    Icons.campaign_outlined,
+                    'Sales Pitch (IA)',
+                    lead['ai_report'],
                     const Color(0xFFA855F7),
-                  ),
-                if (aiIntel.containsKey('reason'))
-                  _buildIntelligenceCard(
-                    Icons.info_outline,
-                    'Análise do Score',
-                    aiIntel['reason'],
-                    Colors.blueAccent,
                   ),
                 if (lead['cleanliness_gap'] != null)
                   _buildIntelligenceCard(
