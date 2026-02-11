@@ -258,7 +258,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
-                        'v1.2.5',
+                        'v1.2.6',
                         style: TextStyle(fontSize: 10, color: Colors.white38),
                       ),
                     ),

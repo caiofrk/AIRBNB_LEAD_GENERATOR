@@ -215,32 +215,59 @@ def deep_analyze_listing(driver, lead_id, url):
                 updates['badges'] = l['badges']
             
             # 4. Host Profile Discovery & Portfolio Scraping
-            host_link_el = host_section.select_one('a[href*="/users/show/"], a[href*="/users/profile/"]')
-            if host_link_el:
-                host_url = "https://www.airbnb.com.br" + host_link_el['href']
-                print(f"      [Host] Visiting profile (Desktop Mode): {host_url}")
+            # Be more aggressive finding the link (sometimes it's an overlay or image link)
+            host_link_el = soup.select_one('a[href*="/users/show/"], a[href*="/users/profile/"]')
+            
+            # Fallback: Try to find Host ID in text if no link
+            host_id = None
+            if not host_link_el:
+                id_match = re.search(r'/users/(\d+)', driver.current_url)
+                if id_match: host_id = id_match.group(1)
+            
+            if host_link_el or host_id:
+                h_href = host_link_el['href'] if host_link_el else f"/users/show/{host_id}"
+                host_url = h_href if h_href.startswith('http') else "https://www.airbnb.com.br" + h_href
+                
+                print(f"      [Host] Target Profile: {host_url}")
                 try:
                     driver.get(host_url)
-                    time.sleep(7) # Extra time for profile layout
+                    time.sleep(8) # Robust wait for profile depth
                     
-                    # Scroll a bit to trigger lazy loading
-                    driver.execute_script("window.scrollTo(0, 800);")
-                    time.sleep(2)
+                    # Scroll to ensure all dynamic blocks (like "See all listings") load
+                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight/3);")
+                    time.sleep(3)
                     
                     host_soup = BeautifulSoup(driver.page_source, 'html.parser')
+                    profile_text = host_soup.get_text()
                     
                     # A) Accurate Portfolio Count (Fator de Escala)
-                    # Look for the "See all listings" text which contains the TRUE count
-                    profile_text = host_soup.get_text()
-                    # Pattern: "Ver os 41 anúncios", "See all 41 listings", "41 acomodações", etc.
-                    count_match = re.search(r'([Vv]er os|[Ss]ee all)?\s*(\d+)\s*(anúncios|listings|acomodações|places)', profile_text)
-                    if count_match:
-                        updates['host_portfolio_size'] = int(count_match.group(2))
-                        print(f"      [Host] TRUE Portfolio Size Identified: {updates['host_portfolio_size']}")
+                    # Use a more explicit regex to avoid matching "reviews" or "years"
+                    # We look for "Ver os X anúncios" or "Showing X places"
+                    patterns = [
+                        r'[Vv]er os\s+(\d+)\s+anúncios',
+                        r'[Ss]ee all\s+(\d+)\s+listings',
+                        r'(\d+)\s+acomodações',
+                        r'(\d+)\s+places'
+                    ]
+                    
+                    found_size = 1
+                    for p in patterns:
+                        m = re.search(p, profile_text)
+                        if m:
+                            found_size = int(m.group(1))
+                            break
+                    
+                    if found_size > 1:
+                        updates['host_portfolio_size'] = found_size
+                        print(f"      [Host] SUCCESS: Identified {found_size} listings.")
                     else:
-                        # Fallback: Count visible cards
-                        cards = host_soup.select('div[data-testid="listing-card-title"], div[data-testid="card-container"]')
-                        updates['host_portfolio_size'] = max(1, len(cards))
+                        # Fallback: Count visible cards on profile
+                        visible_cards = host_soup.select('div[data-testid="listing-card-title"], div[data-testid="card-container"]')
+                        updates['host_portfolio_size'] = max(1, len(visible_cards))
+                        print(f"      [Host] Fallback: Counted {updates['host_portfolio_size']} visible cards.")
+                    
+                    # B) Scrape the reference properties
+                    cards = host_soup.select('div[data-testid="listing-card-title"], div[data-testid="card-container"]')
                     
                     # B) Scrape the properties
                     # If there's a "See all" link, we could follow it, but for now we take the visible ones
