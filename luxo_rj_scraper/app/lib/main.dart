@@ -874,6 +874,50 @@ class _DashboardPageState extends State<DashboardPage> {
                     ),
                   ),
                 ),
+              ] else if (lead['intelligence_status'] == 'scraped') ...[
+                _buildIntelligenceCard(
+                  Icons.check_circle_outline,
+                  'Dados Coletados',
+                  'Scraping completo. Dados do host e reviews disponíveis. '
+                      'Execute o modo AI no PC para gerar classificação.',
+                  Colors.cyan,
+                ),
+                if (lead['cleanliness_gap'] != null)
+                  _buildIntelligenceCard(
+                    Icons.warning_amber_rounded,
+                    'Gap de Limpeza Encontrado',
+                    lead['cleanliness_gap'],
+                    Colors.orange,
+                  ),
+                if (lead['maintenance_items'] != null &&
+                    (lead['maintenance_items'] as List).isNotEmpty)
+                  _buildIntelligenceCard(
+                    Icons.build_circle_outlined,
+                    'Manutenção Crítica',
+                    (lead['maintenance_items'] as List).join(', '),
+                    Colors.blueAccent,
+                  ),
+                _buildIntelligenceCard(
+                  Icons.business_center_outlined,
+                  'Fator de Escala',
+                  'Host possui ${lead['host_portfolio_size'] ?? 1} imóvel(is)',
+                  Colors.greenAccent,
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () => _requestIntelligence(lead['id']),
+                    icon: const Icon(
+                      Icons.refresh,
+                      size: 16,
+                      color: Colors.white38,
+                    ),
+                    label: const Text(
+                      'Re-scrape (Atualizar dados)',
+                      style: TextStyle(color: Colors.white38, fontSize: 12),
+                    ),
+                  ),
+                ),
               ] else
                 _buildActionButton(
                   Icons.analytics_outlined,
