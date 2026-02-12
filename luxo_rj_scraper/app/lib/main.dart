@@ -894,25 +894,40 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               const SizedBox(height: 16),
               _buildActionButton(
-                Icons.chat_bubble_outline,
-                'Conversar no WhatsApp',
-                Colors.green,
-                () => _openWhatsApp(lead),
-              ),
-              const SizedBox(height: 12),
-              _buildActionButton(
-                Icons.email_outlined,
-                'Enviar E-mail',
-                Colors.blue,
-                () => _sendEmail(lead),
-              ),
-              const SizedBox(height: 12),
-              _buildActionButton(
                 Icons.travel_explore,
-                'Ver no Airbnb',
+                'Mensagem no Airbnb',
                 Colors.pinkAccent,
                 () => _openAirbnb(lead),
               ),
+              const SizedBox(height: 12),
+              _buildActionButton(
+                Icons.search,
+                'Pesquisar Contato',
+                Colors.blue,
+                () => _searchHostContact(lead),
+              ),
+              const SizedBox(height: 12),
+              if (lead['telefone'] != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildActionButton(
+                    Icons.chat_bubble_outline,
+                    'Conversar no WhatsApp',
+                    Colors.green,
+                    () => _openWhatsApp(lead),
+                  ),
+                ),
+              if (lead['email'] != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildActionButton(
+                    Icons.email_outlined,
+                    'Enviar E-mail',
+                    Colors.orange,
+                    () => _sendEmail(lead),
+                  ),
+                ),
+
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: () {
@@ -1143,6 +1158,16 @@ class _DashboardPageState extends State<DashboardPage> {
           content: Text('Não foi possível abrir o app de e-mail.'),
         ),
       );
+    }
+  }
+
+  Future<void> _searchHostContact(Map<String, dynamic> lead) async {
+    final hostName = lead['anfitriao'] ?? lead['titulo'] ?? 'airbnb host';
+    final bairro = lead['bairro'] ?? 'Rio de Janeiro';
+    final query = Uri.encodeComponent('$hostName $bairro contato telefone');
+    final url = Uri.parse('https://www.google.com/search?q=$query');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
     }
   }
 
