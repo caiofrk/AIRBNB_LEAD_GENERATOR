@@ -144,16 +144,60 @@ def deep_analyze_listing(driver, lead_id, url):
         ).eq("id", lead_id).single().execute()
         lead_data = lead_row.data or {}
 
-        host_section = soup.select_one(
-            'div[data-testid="pdp-host-profile-section"]')
+        # Try multiple selectors for host section
+        host_selectors = [
+            'div[data-section-id="HOST_PROFILE_DEFAULT"]',
+            'div[data-testid="pdp-host-profile-section"]',
+            'div[data-section-id="HOST_OVERVIEW_DEFAULT"]',
+            'section[data-section-id="HOST_PROFILE_DEFAULT"]',
+        ]
+        host_section = None
+        for sel in host_selectors:
+            host_section = soup.select_one(sel)
+            if host_section:
+                print(f"    ║ Host section via: {sel}")
+                break
+
+        # Fallback: find by text content (anfitrião/anfitriã/superhost)
+        if not host_section:
+            for section in soup.select('section, div[data-section-id]'):
+                txt = section.get_text().lower()
+                if any(kw in txt for kw in [
+                    'anfitrião', 'anfitriã', 'hosted by',
+                    'superhost', 'superanfitrião'
+                ]):
+                    host_section = section
+                    sid = section.get('data-section-id', '?')
+                    print(f"    ║ Host section via TEXT MATCH "
+                          f"(tag={section.name}, section-id={sid})")
+                    break
+
+        if not host_section:
+            # Dump page structure for debugging
+            testids = [el.get('data-testid') for el in
+                       soup.select('[data-testid]')][:20]
+            section_ids = [el.get('data-section-id') for el in
+                           soup.select('[data-section-id]')][:20]
+            print(f"    ║ ⚠ HOST SECTION NOT FOUND!")
+            print(f"    ║ data-testid on page: {testids}")
+            print(f"    ║ data-section-id on page: {section_ids}")
+            full_text = soup.get_text()
+            for kw in ['anfitrião', 'anfitriã', 'hosted by', 'superhost']:
+                idx = full_text.lower().find(kw)
+                if idx >= 0:
+                    snip = full_text[max(0, idx-30):idx+80].strip()
+                    print(f"    ║ '{kw}' in page text: «{snip}»")
+
         print(f"    ║ Host section found: {host_section is not None}")
+
 
         if host_section:
             h_text = host_section.get_text()
             print(f"    ║ Host section text (200ch): {h_text[:200]}")
 
-            # Superhost badge
-            is_superhost = "superhost" in h_text.lower()
+            # Superhost badge (EN + PT)
+            is_superhost = any(kw in h_text.lower() for kw in [
+                'superhost', 'superanfitrião', 'superanfitriã'])
             print(f"    ║ Superhost: {is_superhost}")
             current_badges = lead_data.get('badges') or []
             if isinstance(current_badges, str):
@@ -163,35 +207,71 @@ def deep_analyze_listing(driver, lead_id, url):
                 current_badges.append("Superhost")
                 updates['badges'] = current_badges
 
-            # Host name
-            host_name_el = host_section.select_one('h2, h3')
+            # Host name (EN + PT patterns)
+            host_name_el = host_section.select_one('h2, h3, h1')
             if host_name_el:
                 raw_name = host_name_el.get_text(strip=True)
                 clean_name = re.sub(
-                    r'(Hosted by|Hospede-se com)\s*', '', raw_name).strip()
+                    r'(Hosted by|Hospede-se com|Anfitriã?o:?\s*)',
+                    '', raw_name, flags=re.IGNORECASE).strip()
                 if clean_name:
                     updates['anfitriao'] = clean_name
                     print(f"    ║ Host name: {clean_name}")
 
-        # ─── 5. HOST PROFILE — the big one ───
-        # ONLY search inside host_section — NOT the full page!
-        # (Reviewer profiles also have /users/ links, that's the trap)
-        host_link = None
-        if host_section:
-            host_link = host_section.select_one(
-                'a[href*="/users/show/"], a[href*="/users/profile/"]')
+        # ─── 5. HOST PROFILE — find the HOST (not a commenter!) ───
+        # KEY: Airbnb marks host links with ?previous_page_name=PdpHomeMarketplace
+        # KEY: /users/show/ REDIRECTS to login! Use /users/profile/ instead!
+        navigated_to_profile = False
 
-        print(f"    ║ Host profile link found: {host_link is not None}")
+        # Strategy 1: Search raw HTML for host profile URL with Pdp marker
+        raw_html = driver.page_source
+        host_url_match = re.search(
+            r'/users/(?:show|profile)/(\d+)\?[^"\']*PdpHomeMarketplace',
+            raw_html)
 
-        if host_link:
-            href = host_link['href']
-            host_url = href if href.startswith('http') else \
-                "https://www.airbnb.com.br" + href
+        host_id = None
+        if host_url_match:
+            host_id = host_url_match.group(1)
+            print(f"    ║ ✅ HOST ID found via PdpMarker: {host_id}")
+        else:
+            # Strategy 2: Extract host ID from page JSON data
+            host_id_match = re.search(
+                r'"hostId"\s*:\s*"?(\d+)"?', raw_html)
+            if host_id_match:
+                host_id = host_id_match.group(1)
+                print(f"    ║ ✅ Host ID from JSON: {host_id}")
+            else:
+                print(f"    ║ ⚠ No host ID found anywhere on page.")
+
+        if host_id:
+            # Use /users/profile/ (NOT /users/show/ which redirects to login!)
+            # Keep the PdpHomeMarketplace param — Airbnb expects it
+            host_url = (f"https://www.airbnb.com.br/users/profile/{host_id}"
+                        f"?previous_page_name=PdpHomeMarketplace")
             print(f"    ║ Navigating to: {host_url}")
+            driver.get(host_url)
+            time.sleep(8)
 
-            try:
-                driver.get(host_url)
+            # Check if we got redirected to login
+            landed_url = driver.current_url
+            if '/login' in landed_url:
+                print(f"    ║ ⚠ Redirected to login! Trying alt URL...")
+                # Try without params
+                alt_url = f"https://www.airbnb.com.br/users/profile/{host_id}"
+                driver.get(alt_url)
                 time.sleep(8)
+                landed_url = driver.current_url
+
+            if '/login' not in landed_url:
+                navigated_to_profile = True
+                print(f"    ║ ✅ On profile: {landed_url[:80]}")
+            else:
+                print(f"    ║ ❌ Still on login page. Cannot access profile.")
+
+        print(f"    ║ On host profile: {navigated_to_profile}")
+
+        if navigated_to_profile:
+            try:
 
                 # Scroll progressively to trigger all lazy loads
                 for scroll_pct in [0.3, 0.6, 1.0]:
@@ -284,7 +364,7 @@ def deep_analyze_listing(driver, lead_id, url):
                 try: driver.back()
                 except: pass
         else:
-            print("    ║ No host profile link on page.")
+            print("    ║ Could not reach host profile page.")
             # Try to find count directly on listing page
             listing_count_match = re.search(
                 r'(\d+)\s*an[uú]ncios?', soup.get_text())
