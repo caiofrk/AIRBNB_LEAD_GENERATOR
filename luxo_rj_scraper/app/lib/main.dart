@@ -580,7 +580,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            if ((lead['_grouped_count'] ?? 1) > 1)
+                            if ((lead['host_portfolio_size'] ?? 1) > 1)
                               Container(
                                 margin: const EdgeInsets.only(left: 6),
                                 padding: const EdgeInsets.symmetric(
@@ -592,7 +592,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
-                                  '${lead['_grouped_count']} imóveis',
+                                  '${lead['host_portfolio_size']} imóveis',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
