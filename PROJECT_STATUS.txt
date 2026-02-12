@@ -1,28 +1,129 @@
-# Projeto: Zai Lead Generator
-Status: v1.2.6 - Bulletproof Host Portfolio Scraper 🚀
+================================================================================
+  ZAI LEAD GENERATOR — SESSION BULLETIN
+  Date: February 12, 2026
+  Version: v2.0.7
+================================================================================
 
-## ✅ Funcionalidades Implementadas
+SCRAPER ENGINE FIXES (v2.0 LOCKED)
+--------------------------------------------------------------------------------
 
-1.  **Airbnb Fast Scraper**: Motor de coleta automatizada que extrai títulos, preços e links de bairros premium (Ipanema, Leblon, Barra, etc).
-2.  **Classificador IA de Luxo (Unified JSON)**: Substituição de regras aritméticas por um modelo de avaliação profissional via Gemini 2.0 (0.0 a 1.0).
-3.  **App Zai Dashboard (v1.2.6)**: Interface Flutter com branding "Zai", suporte a regeneração de inteligência e visualização de portfólio.
-4.  **WhatsApp Hook Estratégico**: Geração de frases de 90 caracteres otimizadas para conversão.
-5.  **Equação de Taxa de Luxo (Market Ranking)**: Sistema de ranking competitivo 0-100%.
-6.  **Relatório de Combate Global**: Análise unificada de "Dor" e "Gancho".
-7.  **Fator de Escala (Deep Profile Scraper)**: Agora com detecção robusta de links (absolutos/relativos) e extração de contagem de anúncios via regex multilíngue. Detecta agências (ex: Casapē com 41 anúncios) com precisão cirúrgica.
-8.  **Datas de Busca Dinâmicas**: Janelas de 3 noites com 14 dias de antecedência.
-9.  **Infraestrutura Híbrida & Watcher**: Sistema reativo via Supabase Realtime.
-10. **Pipeline de Deploy**: Script automatizado (`publish_apk.ps1`) para build e deploy.
+[BUG FIX] Host vs Reviewer Bug
+  - Fixed the scraper picking reviewer profiles instead of the host.
+  - Now uses PdpHomeMarketplace marker in the URL — only the host has it.
 
-## 🛠️ Tecnologias Utilizadas
-- **Backend**: Python (Selenium, BeautifulSoup4).
-- **Frontend**: Flutter (Material 3).
-- **IA**: Google Gemini 2.0 Flash Lite.
-- **DB**: Supabase.
+[BUG FIX] Login Redirect Bug
+  - /users/show/ was redirecting to Airbnb's login page.
+  - Switched to /users/profile/ which works without authentication.
 
----
+[BUG FIX] Host Section Not Found
+  - Old pdp-host-profile-section selector didn't work.
+  - Added multi-selector fallback (HOST_OVERVIEW_DEFAULT, HOST_PROFILE_DEFAULT)
+    plus text-based fallback searching for "anfitrião"/"superhost" in Portuguese.
 
-## 📋 Próximos Passos (Backlog)
-- [ ] **Integração CRM v1**: Mudar status do lead para "Negociando", "Rejeitado" ou "Ganho".
-- [ ] **Modo Map View**: Visualização geográfica dos leads premium.
-- [ ] **Lead Export**: Exportar dossiê para PDF.
+[BUG FIX] "Consultar Perfil" as Host Name
+  - The h2/h3 element was grabbing a button label instead of actual name.
+  - Rewrote extraction to use regex on section text (Anfitriã(o): {name}),
+    with a blacklist filter for garbage values.
+
+[FEATURE] Portuguese Language Support
+  - Added PT-BR variants for Superhost (superanfitrião, superanfitriã),
+    host name patterns (Anfitriã(o), Hospede-se com), and listing counts
+    (anúncios, acomodações).
+
+[REMOVED] AI Dependency
+  - Completely removed all AI/Gemini dependencies.
+  - Status flow simplified: pending → ready. Zero quota issues.
+
+
+APP UI CHANGES (v2.0.1 through v2.0.7)
+--------------------------------------------------------------------------------
+
+[v2.0.1] Compact Portfolio Display
+  - Replaced 41 rows of "Listing" with a single clean card:
+    "41 imóveis gerenciados".
+
+[v2.0.2] Clean Portfolio Display
+  - Removed confusing "X imóveis detectados no perfil" subtitle.
+  - Just shows the total number now.
+
+[v2.0.3] CRM-Style Display
+  - Host name is now the primary lead identifier (was listing title).
+  - Listing title appears as subtitle in the detail sheet.
+
+[v2.0.4] Missing Leads Fix + Search by Host Name
+  - Fixed: contatado == false excluded null rows (changed to != true).
+  - Search bar now matches host name, listing title, and neighborhood.
+
+[v2.0.5] Host Name Extraction Fix + Total Leads Count
+  - Fixed "Consultar Perfil" appearing as host name for all leads.
+  - Total Leads now shows real DB count (allLeads), not filtered count.
+
+[v2.0.6] Default Sort = Luxury Score
+  - App opens sorted by highest Luxury Score instead of newest.
+
+[v2.0.7] Real Contact Actions
+  - Removed fake WhatsApp/Email buttons. Replaced with:
+    * "Mensagem no Airbnb" → Opens listing page to DM the host
+    * "Pesquisar Contato" → Google searches "{host name} {bairro} contato telefone"
+    * WhatsApp/Email only appear when real data exists in DB
+
+
+DATABASE CLEANUPS
+--------------------------------------------------------------------------------
+
+  - 54 fake emails cleared (host_xxx@luxuryrj.com garbage removed)
+  - 87 leads re-scraped with v2.0 engine for accurate host names and portfolios
+  - 47 leads with "Consultar Perfil" as host name reset and re-scraped
+
+
+DOCUMENTATION & VERSIONING
+--------------------------------------------------------------------------------
+
+  - Git tag v2.0 — Locked version with working host profile scraping
+  - Architecture workflow — .agent/workflows/scraper-architecture.md
+    documents all locked decisions (DO NOT CHANGE)
+  - 7 APK releases — v2.0 through v2.0.7, all pushed to GitHub
+
+
+TECH STACK
+--------------------------------------------------------------------------------
+
+  - Scraper:   Python + Selenium + BeautifulSoup
+  - Backend:   Supabase (PostgreSQL + Realtime)
+  - App:       Flutter (Android APK)
+  - AI:        REMOVED (zero dependency)
+  - Env vars:  SUPABASE_URL, SUPABASE_KEY
+
+
+NEXT STEPS (CRM EVOLUTION)
+--------------------------------------------------------------------------------
+
+  1. Lead Deduplication by Host
+     - Group multiple listings under same host into one lead
+
+  2. Contact Management
+     - Contact status tracking: não contatado → contatado → respondeu → fechou
+     - Follow-up reminders / timestamps
+
+  3. Lead Scoring Improvement
+     - Factor in portfolio size (bigger host = bigger deal)
+     - Factor in Superhost status
+     - Factor in maintenance items (more = more opportunities)
+
+  4. Host-Centric View
+     - Tap a host → see ALL their listings in one place
+     - Total revenue potential per host
+
+  5. Pipeline/Funnel View
+     - Visual funnel: New → Contacted → Responded → Closed
+     - Conversion metrics
+
+  6. Expand Geography
+     - New Rio neighborhoods
+     - São Paulo, Florianópolis, etc.
+
+================================================================================
+  Current Version: v2.0.7
+  Git Range: bb582ba → 4b97e38
+  Last Updated: Feb 12, 2026 11:49 AM BRT
+================================================================================

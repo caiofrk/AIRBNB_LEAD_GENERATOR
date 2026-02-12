@@ -241,6 +241,17 @@ def deep_analyze_listing(driver, lead_id, url):
                     ]:
                         host_name = raw
 
+            # Clean trailing garbage from host name
+            if host_name:
+                # Strip "Superhost" suffix (often stuck to name)
+                host_name = re.sub(r'Superhost.*$', '', host_name,
+                                   flags=re.IGNORECASE).strip()
+                # Strip "X anos hospedando" suffix
+                host_name = re.sub(r'\d+\s*anos?\s*hospedando.*$', '',
+                                   host_name, flags=re.IGNORECASE).strip()
+                # Strip trailing dots/spaces/special chars
+                host_name = host_name.rstrip(' ·.·')
+
             if host_name:
                 updates['anfitriao'] = host_name
                 print(f"    ║ Host name: {host_name}")
@@ -261,6 +272,7 @@ def deep_analyze_listing(driver, lead_id, url):
         host_id = None
         if host_url_match:
             host_id = host_url_match.group(1)
+            updates['host_id'] = host_id
             print(f"    ║ ✅ HOST ID found via PdpMarker: {host_id}")
         else:
             # Strategy 2: Extract host ID from page JSON data
@@ -268,6 +280,7 @@ def deep_analyze_listing(driver, lead_id, url):
                 r'"hostId"\s*:\s*"?(\d+)"?', raw_html)
             if host_id_match:
                 host_id = host_id_match.group(1)
+                updates['host_id'] = host_id
                 print(f"    ║ ✅ Host ID from JSON: {host_id}")
             else:
                 print(f"    ║ ⚠ No host ID found anywhere on page.")

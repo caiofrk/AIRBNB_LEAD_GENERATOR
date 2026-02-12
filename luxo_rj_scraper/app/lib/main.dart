@@ -144,6 +144,75 @@ class _DashboardPageState extends State<DashboardPage> {
                   break;
               }
 
+              // Deduplicate by host — show best listing per host
+              final Map<String, List<Map<String, dynamic>>> hostGroups = {};
+              final List<Map<String, dynamic>> ungrouped = [];
+              for (var l in filteredLeads) {
+                final host = l['anfitriao'] as String?;
+                if (host != null &&
+                    host.isNotEmpty &&
+                    host != 'Consultar Perfil') {
+                  hostGroups.putIfAbsent(host, () => []).add(l);
+                } else {
+                  ungrouped.add(l);
+                }
+              }
+
+              // For each host group, pick the best-scored listing as representative
+              final List<Map<String, dynamic>> dedupedLeads = [];
+              for (var entry in hostGroups.entries) {
+                final listings = entry.value;
+                // Sort by relative_score descending, pick best
+                listings.sort(
+                  (a, b) => ((b['relative_score'] as num?) ?? 0).compareTo(
+                    (a['relative_score'] as num?) ?? 0,
+                  ),
+                );
+                final representative = Map<String, dynamic>.from(
+                  listings.first,
+                );
+                representative['_grouped_count'] = listings.length;
+                representative['_grouped_listings'] = listings;
+                dedupedLeads.add(representative);
+              }
+              // Add ungrouped leads
+              for (var l in ungrouped) {
+                final rep = Map<String, dynamic>.from(l);
+                rep['_grouped_count'] = 1;
+                dedupedLeads.add(rep);
+              }
+
+              // Re-sort deduped list
+              switch (_sortBy) {
+                case 'score':
+                  dedupedLeads.sort(
+                    (a, b) => ((b['relative_score'] as num?) ?? 0).compareTo(
+                      (a['relative_score'] as num?) ?? 0,
+                    ),
+                  );
+                  break;
+                case 'price_asc':
+                  dedupedLeads.sort(
+                    (a, b) => (a['preco_noite'] ?? 0).compareTo(
+                      b['preco_noite'] ?? 0,
+                    ),
+                  );
+                  break;
+                case 'price_desc':
+                  dedupedLeads.sort(
+                    (a, b) => (b['preco_noite'] ?? 0).compareTo(
+                      a['preco_noite'] ?? 0,
+                    ),
+                  );
+                  break;
+                case 'newest':
+                  dedupedLeads.sort(
+                    (a, b) => (b['created_at'] ?? b['criado_em'] ?? '')
+                        .compareTo(a['created_at'] ?? a['criado_em'] ?? ''),
+                  );
+                  break;
+              }
+
               return RefreshIndicator(
                 onRefresh: () async {
                   setState(() {});
@@ -158,7 +227,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     _buildSearchBox(allLeads),
                     _buildStatsSummary(allLeads),
                     _buildQuickSortBar(),
-                    _buildLeadsList(snapshot, filteredLeads),
+                    _buildLeadsList(snapshot, dedupedLeads),
                   ],
                 ),
               );
@@ -511,12 +580,35 @@ class _DashboardPageState extends State<DashboardPage> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            if ((lead['_grouped_count'] ?? 1) > 1)
+                              Container(
+                                margin: const EdgeInsets.only(left: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.greenAccent.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '${lead['_grouped_count']} imóveis',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.greenAccent.withOpacity(0.9),
+                                  ),
+                                ),
+                              ),
                             if (timeAgo.isNotEmpty)
-                              Text(
-                                timeAgo,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white.withOpacity(0.3),
+                              Padding(
+                                padding: const EdgeInsets.only(left: 6),
+                                child: Text(
+                                  timeAgo,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white.withOpacity(0.3),
+                                  ),
                                 ),
                               ),
                           ],
