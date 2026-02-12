@@ -174,14 +174,12 @@ def deep_analyze_listing(driver, lead_id, url):
                     print(f"    ║ Host name: {clean_name}")
 
         # ─── 5. HOST PROFILE — the big one ───
-        # Search the ENTIRE page for profile links
-        all_links = soup.select('a[href]')
+        # ONLY search inside host_section — NOT the full page!
+        # (Reviewer profiles also have /users/ links, that's the trap)
         host_link = None
-        for a in all_links:
-            href = a.get('href', '')
-            if '/users/show/' in href or '/users/profile/' in href:
-                host_link = a
-                break
+        if host_section:
+            host_link = host_section.select_one(
+                'a[href*="/users/show/"], a[href*="/users/profile/"]')
 
         print(f"    ║ Host profile link found: {host_link is not None}")
 
