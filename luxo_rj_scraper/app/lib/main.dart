@@ -47,7 +47,7 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   final _client = Supabase.instance.client;
   String _searchQuery = '';
-  String _sortBy = 'newest'; // 'score', 'price_asc', 'price_desc', 'newest'
+  String _sortBy = 'score'; // 'score', 'price_asc', 'price_desc', 'newest'
   String _selectedBairro = 'Todos';
   final _currencyFormat = NumberFormat.simpleCurrency(locale: 'pt_BR');
 
