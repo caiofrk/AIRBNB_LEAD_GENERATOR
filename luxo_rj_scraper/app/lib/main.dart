@@ -498,7 +498,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           children: [
                             Expanded(
                               child: Text(
-                                lead['titulo'] ?? 'Imóvel Premium',
+                                lead['anfitriao'] ?? lead['titulo'] ?? 'Lead',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -689,18 +689,28 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               const SizedBox(height: 24),
               Text(
-                lead['titulo'] ?? 'Detalhes do Imóvel',
+                lead['anfitriao'] ?? 'Host Desconhecido',
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
+              Text(
+                lead['titulo'] ?? 'Imóvel',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white.withOpacity(0.6),
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
               Text(
                 '${lead['bairro']} • RJ',
                 style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.white.withOpacity(0.5),
+                  fontSize: 13,
+                  color: Colors.white.withOpacity(0.35),
                 ),
               ),
               const SizedBox(height: 24),
