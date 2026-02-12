@@ -79,11 +79,14 @@ class _DashboardPageState extends State<DashboardPage> {
                     ) ||
                     (l['bairro'] ?? '').toLowerCase().contains(
                       _searchQuery.toLowerCase(),
+                    ) ||
+                    (l['anfitriao'] ?? '').toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
                     );
                 final matchBairro =
                     _selectedBairro == 'Todos' ||
                     (l['bairro'] ?? '') == _selectedBairro;
-                final isNotContacted = l['contatado'] == false;
+                final isNotContacted = l['contatado'] != true;
                 return matchSearch && matchBairro && isNotContacted;
               }).toList();
 
