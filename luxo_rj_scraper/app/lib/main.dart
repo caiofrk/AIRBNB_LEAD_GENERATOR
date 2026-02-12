@@ -156,7 +156,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   slivers: [
                     _buildAppBar(),
                     _buildSearchBox(allLeads),
-                    _buildStatsSummary(filteredLeads),
+                    _buildStatsSummary(allLeads),
                     _buildQuickSortBar(),
                     _buildLeadsList(snapshot, filteredLeads),
                   ],

@@ -207,16 +207,45 @@ def deep_analyze_listing(driver, lead_id, url):
                 current_badges.append("Superhost")
                 updates['badges'] = current_badges
 
-            # Host name (EN + PT patterns)
-            host_name_el = host_section.select_one('h2, h3, h1')
-            if host_name_el:
-                raw_name = host_name_el.get_text(strip=True)
-                clean_name = re.sub(
-                    r'(Hosted by|Hospede-se com|Anfitriã?o:?\s*)',
-                    '', raw_name, flags=re.IGNORECASE).strip()
-                if clean_name:
-                    updates['anfitriao'] = clean_name
-                    print(f"    ║ Host name: {clean_name}")
+            # Host name — extract from section text, NOT from h2/h3
+            # (h2/h3 often picks up "Consultar Perfil" button text)
+            host_name = None
+
+            # Try regex patterns on the section text
+            name_patterns = [
+                r'Anfitri[ãa]\(?o?\)?[:\s]+([A-ZÀ-Ú][\w\s\-&\.]+)',
+                r'Hosted by\s+(.+?)(?:\s*$|\s*Superhost)',
+                r'Hospede-se com\s+(.+?)(?:\s*$|\s*Superhost)',
+            ]
+            for pat in name_patterns:
+                m = re.search(pat, h_text)
+                if m:
+                    candidate = m.group(1).strip()
+                    # Filter out garbage
+                    if candidate and candidate.lower() not in [
+                        'consultar perfil', 'ver perfil', 'profile'
+                    ]:
+                        host_name = candidate
+                        break
+
+            # Fallback: try h2/h3 but filter garbage
+            if not host_name:
+                host_name_el = host_section.select_one('h2, h3, h1')
+                if host_name_el:
+                    raw = host_name_el.get_text(strip=True)
+                    raw = re.sub(
+                        r'(Hosted by|Hospede-se com|Anfitriã?o:?\s*)',
+                        '', raw, flags=re.IGNORECASE).strip()
+                    if raw and raw.lower() not in [
+                        'consultar perfil', 'ver perfil', 'profile'
+                    ]:
+                        host_name = raw
+
+            if host_name:
+                updates['anfitriao'] = host_name
+                print(f"    ║ Host name: {host_name}")
+            else:
+                print(f"    ║ ⚠ Could not extract host name")
 
         # ─── 5. HOST PROFILE — find the HOST (not a commenter!) ───
         # KEY: Airbnb marks host links with ?previous_page_name=PdpHomeMarketplace
