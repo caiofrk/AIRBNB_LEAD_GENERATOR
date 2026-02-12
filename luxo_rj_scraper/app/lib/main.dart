@@ -824,14 +824,6 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               const SizedBox(height: 16),
               if (lead['intelligence_status'] == 'ready') ...[
-                if (lead['ai_report'] != null &&
-                    (lead['ai_report'] as String).isNotEmpty)
-                  _buildIntelligenceCard(
-                    Icons.campaign_outlined,
-                    'Sales Pitch (IA)',
-                    lead['ai_report'],
-                    const Color(0xFFA855F7),
-                  ),
                 if (lead['cleanliness_gap'] != null)
                   _buildIntelligenceCard(
                     Icons.warning_amber_rounded,
@@ -863,51 +855,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       color: Colors.white38,
                     ),
                     label: const Text(
-                      'Regenerar Inteligência',
-                      style: TextStyle(color: Colors.white38, fontSize: 12),
-                    ),
-                  ),
-                ),
-              ] else if (lead['intelligence_status'] == 'scraped') ...[
-                _buildIntelligenceCard(
-                  Icons.check_circle_outline,
-                  'Dados Coletados',
-                  'Scraping completo. Dados do host e reviews disponíveis. '
-                      'Execute o modo AI no PC para gerar classificação.',
-                  Colors.cyan,
-                ),
-                if (lead['cleanliness_gap'] != null)
-                  _buildIntelligenceCard(
-                    Icons.warning_amber_rounded,
-                    'Gap de Limpeza Encontrado',
-                    lead['cleanliness_gap'],
-                    Colors.orange,
-                  ),
-                if (lead['maintenance_items'] != null &&
-                    (lead['maintenance_items'] as List).isNotEmpty)
-                  _buildIntelligenceCard(
-                    Icons.build_circle_outlined,
-                    'Manutenção Crítica',
-                    (lead['maintenance_items'] as List).join(', '),
-                    Colors.blueAccent,
-                  ),
-                _buildIntelligenceCard(
-                  Icons.business_center_outlined,
-                  'Fator de Escala',
-                  'Host possui ${lead['host_portfolio_size'] ?? 1} imóvel(is)',
-                  Colors.greenAccent,
-                ),
-                const SizedBox(height: 8),
-                Center(
-                  child: TextButton.icon(
-                    onPressed: () => _requestIntelligence(lead['id']),
-                    icon: const Icon(
-                      Icons.refresh,
-                      size: 16,
-                      color: Colors.white38,
-                    ),
-                    label: const Text(
-                      'Re-scrape (Atualizar dados)',
+                      'Re-scrape',
                       style: TextStyle(color: Colors.white38, fontSize: 12),
                     ),
                   ),
@@ -917,7 +865,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   Icons.analytics_outlined,
                   lead['intelligence_status'] == 'pending'
                       ? 'Análise em Fila...'
-                      : 'Gerar Inteligência Detalhada',
+                      : 'Iniciar Scrape',
                   Colors.amber,
                   lead['intelligence_status'] == 'pending'
                       ? () {}
