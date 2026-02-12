@@ -782,17 +782,51 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               ...() {
                 final hostListings = _parseHostListings(lead);
+                final portfolioSize = lead['host_portfolio_size'] ?? 1;
                 if (hostListings.isNotEmpty) {
                   return [
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Outros imóveis deste host:',
-                      style: TextStyle(fontSize: 12, color: Colors.white38),
-                    ),
                     const SizedBox(height: 12),
-                    ...hostListings
-                        .map((hl) => _buildHostListingItem(hl))
-                        .toList(),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.03),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.greenAccent.withOpacity(0.15),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.apartment,
+                                color: Colors.greenAccent.withOpacity(0.7),
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '$portfolioSize imóveis gerenciados',
+                                style: TextStyle(
+                                  color: Colors.greenAccent.withOpacity(0.9),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${hostListings.length} imóveis detectados no perfil',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.4),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ];
                 }
                 return <Widget>[];
@@ -915,37 +949,6 @@ class _DashboardPageState extends State<DashboardPage> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildHostListingItem(dynamic listing) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.maps_home_work_outlined,
-            color: Colors.white24,
-            size: 16,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              listing['title'] ?? 'Listing sem título',
-              style: const TextStyle(fontSize: 13, color: Colors.white70),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 12),
-        ],
       ),
     );
   }
