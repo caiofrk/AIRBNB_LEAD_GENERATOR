@@ -632,24 +632,6 @@ class _DashboardPageState extends State<DashboardPage> {
     return {};
   }
 
-  List<dynamic> _parseHostListings(Map<String, dynamic> lead) {
-    try {
-      if (lead['descricao'] != null) {
-        final desc = lead['descricao'] as String;
-        if (desc.contains('--- HOST_LISTINGS_JSON ---')) {
-          final raw = desc
-              .split('--- HOST_LISTINGS_JSON ---')
-              .last
-              .split('---')
-              .first
-              .trim();
-          return jsonDecode(raw);
-        }
-      }
-    } catch (_) {}
-    return [];
-  }
-
   Widget _buildReactiveDetailSheet(dynamic leadId, {double? initialScore}) {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _client.from('leads').stream(primaryKey: ['id']).eq('id', leadId),
@@ -781,9 +763,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 '${lead['host_portfolio_size'] ?? 1} imóvel(is)',
               ),
               ...() {
-                final hostListings = _parseHostListings(lead);
                 final portfolioSize = lead['host_portfolio_size'] ?? 1;
-                if (hostListings.isNotEmpty) {
+                if (portfolioSize > 1) {
                   return [
                     const SizedBox(height: 12),
                     Container(
@@ -795,33 +776,20 @@ class _DashboardPageState extends State<DashboardPage> {
                           color: Colors.greenAccent.withOpacity(0.15),
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.apartment,
-                                color: Colors.greenAccent.withOpacity(0.7),
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '$portfolioSize imóveis gerenciados',
-                                style: TextStyle(
-                                  color: Colors.greenAccent.withOpacity(0.9),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
+                          Icon(
+                            Icons.apartment,
+                            color: Colors.greenAccent.withOpacity(0.7),
+                            size: 18,
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(width: 8),
                           Text(
-                            '${hostListings.length} imóveis detectados no perfil',
+                            '$portfolioSize imóveis gerenciados',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.4),
-                              fontSize: 11,
+                              color: Colors.greenAccent.withOpacity(0.9),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
                             ),
                           ),
                         ],
@@ -831,6 +799,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 }
                 return <Widget>[];
               }(),
+
               const SizedBox(height: 32),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
