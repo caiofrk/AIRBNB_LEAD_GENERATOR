@@ -727,6 +727,24 @@ class _DashboardPageState extends State<DashboardPage> {
     return {};
   }
 
+  Map<String, dynamic> _parseContactExtras(Map<String, dynamic> lead) {
+    try {
+      if (lead['descricao'] != null) {
+        final desc = lead['descricao'] as String;
+        if (desc.contains('--- CONTACT_INFO_JSON ---')) {
+          final raw = desc
+              .split('--- CONTACT_INFO_JSON ---')
+              .last
+              .split('---')
+              .first
+              .trim();
+          return jsonDecode(raw);
+        }
+      }
+    } catch (_) {}
+    return {};
+  }
+
   Widget _buildReactiveDetailSheet(dynamic leadId, {double? initialScore}) {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _client.from('leads').stream(primaryKey: ['id']).eq('id', leadId),
@@ -1019,6 +1037,55 @@ class _DashboardPageState extends State<DashboardPage> {
                     () => _sendEmail(lead),
                   ),
                 ),
+              Builder(
+                builder: (context) {
+                  final extras = _parseContactExtras(lead);
+                  return Column(
+                    children: [
+                      if (extras['instagram'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildActionButton(
+                            Icons.camera_alt_outlined,
+                            'Instagram: ${extras['instagram']}',
+                            Colors.purpleAccent,
+                            () async {
+                              final handle = (extras['instagram'] as String)
+                                  .replaceAll('@', '');
+                              final url = Uri.parse(
+                                'https://instagram.com/$handle',
+                              );
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(
+                                  url,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      if (extras['website'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildActionButton(
+                            Icons.language,
+                            'Website',
+                            Colors.tealAccent,
+                            () async {
+                              final url = Uri.parse(extras['website']);
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(
+                                  url,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
 
               const SizedBox(height: 32),
               ElevatedButton(

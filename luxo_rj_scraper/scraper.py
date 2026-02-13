@@ -394,6 +394,84 @@ def deep_analyze_listing(driver, lead_id, url):
                     updates['descricao'] = f"{host_block}\n\n{description}"
                     print(f"    ║ Cataloged {len(other_listings)} listings")
 
+                # ─── CONTACT INFO EXTRACTION ───
+                # Search profile text + listing description for contact info
+                all_text = prof_text + "\n" + (description or "")
+
+                # Email extraction
+                emails_found = re.findall(
+                    r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}',
+                    all_text)
+                # Filter out airbnb internal emails
+                real_emails = [
+                    e for e in emails_found
+                    if not any(x in e.lower() for x in [
+                        'airbnb', 'noreply', 'example',
+                        'test', 'luxuryrj', 'host_'
+                    ])
+                ]
+                if real_emails:
+                    updates['email'] = real_emails[0]
+                    print(f"    ║ 📧 Email found: {real_emails[0]}")
+
+                # Phone extraction (Brazilian formats)
+                phones_found = re.findall(
+                    r'(?:\+?55\s?)?(?:\(?\d{2}\)?\s?)?\d{4,5}[\-\s]?\d{4}',
+                    all_text)
+                if phones_found:
+                    # Clean phone number
+                    raw_phone = phones_found[0]
+                    clean_phone = re.sub(r'[^\d+]', '', raw_phone)
+                    if len(clean_phone) >= 10:
+                        updates['telefone'] = clean_phone
+                        print(f"    ║ 📞 Phone found: {clean_phone}")
+
+                # Website / Instagram extraction from profile links
+                contact_extras = {}
+                for a_tag in prof_soup.select('a[href]'):
+                    href = a_tag.get('href', '')
+                    # Instagram
+                    ig_match = re.search(
+                        r'instagram\.com/([a-zA-Z0-9_.]+)', href)
+                    if ig_match:
+                        ig_handle = ig_match.group(1)
+                        if ig_handle.lower() not in ['airbnb', 'p', 'reel']:
+                            contact_extras['instagram'] = f"@{ig_handle}"
+                            print(f"    ║ 📸 Instagram: @{ig_handle}")
+                    # External website (not airbnb)
+                    if ('http' in href and
+                            'airbnb' not in href and
+                            'google' not in href and
+                            'facebook' not in href and
+                            'instagram' not in href and
+                            'apple' not in href and
+                            'play.google' not in href):
+                        contact_extras['website'] = href
+                        print(f"    ║ 🌐 Website: {href}")
+
+                # Also check profile text for Instagram handles
+                ig_text = re.findall(r'@([a-zA-Z0-9_.]{3,30})', all_text)
+                for handle in ig_text:
+                    if handle.lower() not in [
+                        'airbnb', 'gmail', 'hotmail', 'yahoo',
+                        'outlook', 'icloud'
+                    ] and 'instagram' not in contact_extras:
+                        contact_extras['instagram'] = f"@{handle}"
+                        print(f"    ║ 📸 Instagram (text): @{handle}")
+                        break
+
+                # Append contact extras to description as JSON
+                if contact_extras:
+                    contact_block = (f"\n--- CONTACT_INFO_JSON ---\n"
+                                     f"{json.dumps(contact_extras)}\n---")
+                    updates['descricao'] = (
+                        updates.get('descricao', description or '')
+                        + contact_block)
+
+                if not any(k in updates for k in ['email', 'telefone']) \
+                        and not contact_extras:
+                    print(f"    ║ ⚠ No contact info found on profile")
+
                 driver.back()
                 time.sleep(3)
 
