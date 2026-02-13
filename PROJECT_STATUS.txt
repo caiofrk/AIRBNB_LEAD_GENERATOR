@@ -110,11 +110,10 @@ NEXT STEPS (CRM EVOLUTION)
      - Factor in Superhost status
      - Factor in maintenance items (more = more opportunities)
 
-  4. Host-Centric View
-     - Tap a host → see ALL their listings in one place
-     - Total revenue potential per host
+   4. Host-Centric View
+      - Tap a host → see ALL their listings in one place
 
-  5. Pipeline/Funnel View
+   5. Pipeline/Funnel View
      - Visual funnel: New → Contacted → Responded → Closed
      - Conversion metrics
 

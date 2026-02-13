@@ -468,68 +468,9 @@ def deep_analyze_listing(driver, lead_id, url):
                         updates.get('descricao', description or '')
                         + contact_block)
 
-                # Check if we need Google Enrichment
-                if not any(k in updates for k in ['email', 'telefone']) \
-                        and not contact_extras and host_name:
-                    
-                    print(f"    ║ ⚠ No contact info on profile. Trying Google Enrichment for '{host_name}'...")
-                    try:
-                        # Open new tab for Google Search
-                        driver.execute_script("window.open('');")
-                        driver.switch_to.window(driver.window_handles[-1])
-                        
-                        search_query = f'"{host_name}" contato email telefone instagram rio de janeiro'
-                        driver.get(f"https://www.google.com/search?q={search_query}")
-                        time.sleep(3)
-                        
-                        g_text = driver.find_element("tag name", "body").text
-                        
-                        # Email via Google
-                        g_emails = re.findall(
-                            r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}', g_text)
-                        valid_g_emails = [e for e in g_emails if not any(x in e.lower() for x in ['google', 'airbnb', 'wix', 'domain'])]
-                        if valid_g_emails:
-                            updates['email'] = valid_g_emails[0]
-                            print(f"    ║ 🎯 Google found email: {valid_g_emails[0]}")
-                            
-                        # Phone via Google
-                        g_phones = re.findall(
-                            r'(?:\+?55\s?)?(?:\(?\d{2}\)?\s?)?9?\d{4}[\-\s]?\d{4}', g_text)
-                        if g_phones:
-                            raw_p = g_phones[0]
-                            clean_p = re.sub(r'[^\d+]', '', raw_p)
-                            if len(clean_p) >= 10:
-                                updates['telefone'] = clean_p
-                                print(f"    ║ 🎯 Google found phone: {clean_p}")
-
-                        # Instagram via Google
-                        if 'instagram' not in contact_extras:
-                            g_ig = re.search(r'instagram\.com/([a-zA-Z0-9_.]+)', g_text)
-                            if g_ig:
-                                handle = g_ig.group(1)
-                                if handle.lower() not in ['airbnb', 'p', 'reel']:
-                                    contact_extras['instagram'] = f"@{handle}"
-                                    print(f"    ║ 🎯 Google found IG: @{handle}")
-                                    
-                        # Update description if extras found via Google
-                        if contact_extras:
-                             contact_block = (f"\n--- CONTACT_INFO_JSON ---\n"
-                                             f"{json.dumps(contact_extras)}\n---")
-                             updates['descricao'] = (
-                                updates.get('descricao', description or '')
-                                + contact_block)
-
-                    except Exception as e:
-                        print(f"    ║ ⚠ Google Enrichment failed: {e}")
-                    finally:
-                        # Close tab and return to profile
-                        if len(driver.window_handles) > 1:
-                            driver.close()
-                            driver.switch_to.window(driver.window_handles[0])
-
                 if not any(k in updates for k in ['email', 'telefone']) \
                         and not contact_extras:
-                    print(f"    ║ ⚠ Still no contact info after Google search")
+                    print(f"    ║ ⚠ No contact info found on profile")
 
                 driver.back()
                 time.sleep(3)
