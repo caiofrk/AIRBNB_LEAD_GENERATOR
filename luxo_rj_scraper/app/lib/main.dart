@@ -51,11 +51,16 @@ class _DashboardPageState extends State<DashboardPage> {
   final _currencyFormat = NumberFormat.simpleCurrency(locale: 'pt_BR');
   final Set<String> _selectedHostIds = {};
   bool _isSelectionMode = false;
-  String _pipelineFilter =
-      'Todos'; // 'Todos', 'Novo', 'Contatado', 'Respondeu', 'Interessado', 'Venda'
+  String _pipelineFilter = 'Todos';
+  bool _showArchived = false; // Toggle for "Contacted" view
 
-  Stream<List<Map<String, dynamic>>> get _leadsStream =>
-      _client.from('leads').stream(primaryKey: ['id']);
+  late Stream<List<Map<String, dynamic>>> _leadsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _leadsStream = _client.from('leads').stream(primaryKey: ['id']);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +94,11 @@ class _DashboardPageState extends State<DashboardPage> {
                 final matchBairro =
                     _selectedBairro == 'Todos' ||
                     (l['bairro'] ?? '') == _selectedBairro;
-                final isNotContacted = l['contatado'] != true;
+
+                // NEW: Show either active OR archived leads
+                final matchArchived = _showArchived
+                    ? l['contatado'] == true
+                    : l['contatado'] != true;
 
                 final badges = l['badges'] as List? ?? [];
                 String status = 'Novo';
@@ -103,7 +112,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
                 return matchSearch &&
                     matchBairro &&
-                    isNotContacted &&
+                    matchArchived &&
                     matchPipeline;
               }).toList();
 
@@ -243,7 +252,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
-                    _buildAppBar(),
+                    _buildAppBar(dedupedLeads),
                     _buildSearchBox(allLeads),
                     _buildStatsSummary(allLeads),
                     _buildQuickSortBar(),
@@ -274,9 +283,20 @@ class _DashboardPageState extends State<DashboardPage> {
                   final matchBairro =
                       _selectedBairro == 'Todos' ||
                       (l['bairro'] ?? '') == _selectedBairro;
-                  final isNotContacted = l['contatado'] != true;
-                  return matchSearch && matchBairro && isNotContacted;
+                  final matchArchived = _showArchived
+                      ? l['contatado'] == true
+                      : l['contatado'] != true;
+                  return matchSearch && matchBairro && matchArchived;
                 }).toList();
+
+                if (_showArchived) {
+                  return FloatingActionButton.extended(
+                    onPressed: () => _bulkRestore(filtered),
+                    icon: const Icon(Icons.restore, color: Colors.white),
+                    label: Text('Restaurar (${_selectedHostIds.length})'),
+                    backgroundColor: Colors.green,
+                  );
+                }
 
                 return FloatingActionButton.extended(
                   onPressed: () => _showMassMessageSheet(filtered),
@@ -288,6 +308,35 @@ class _DashboardPageState extends State<DashboardPage> {
             )
           : null,
     );
+  }
+
+  Future<void> _bulkRestore(List<Map<String, dynamic>> allLeads) async {
+    final selectedIds = _selectedHostIds.toList();
+    try {
+      await _client
+          .from('leads')
+          .update({'contatado': false})
+          .filter('id', 'in', selectedIds);
+      setState(() {
+        _selectedHostIds.clear();
+        _isSelectionMode = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${selectedIds.length} leads restaurados com sucesso.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erro ao restaurar: $e')));
+      }
+    }
   }
 
   void _showMassMessageSheet(List<Map<String, dynamic>> allLeads) {
@@ -473,7 +522,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(List<Map<String, dynamic>> currentLeads) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
@@ -505,7 +554,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
-                        'v2.3.2',
+                        'v2.3.5',
                         style: TextStyle(fontSize: 10, color: Colors.white38),
                       ),
                     ),
@@ -523,7 +572,52 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ],
             ),
-            _buildSelectionToggle(),
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () =>
+                      setState(() => _showArchived = !_showArchived),
+                  icon: Icon(
+                    _showArchived ? Icons.archive : Icons.archive_outlined,
+                    color: _showArchived
+                        ? const Color(0xFF6366F1)
+                        : Colors.white70,
+                    size: 24,
+                  ),
+                  tooltip: _showArchived ? 'Ver Leads Ativos' : 'Ver Arquivo',
+                ),
+                if (_isSelectionMode)
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        final allSelected = currentLeads.every(
+                          (l) => _selectedHostIds.contains(l['id']),
+                        );
+                        if (allSelected) {
+                          for (var l in currentLeads) {
+                            _selectedHostIds.remove(l['id']);
+                          }
+                        } else {
+                          for (var l in currentLeads) {
+                            _selectedHostIds.add(l['id']);
+                          }
+                        }
+                      });
+                    },
+                    icon: Icon(
+                      currentLeads.every(
+                            (l) => _selectedHostIds.contains(l['id']),
+                          )
+                          ? Icons.deselect
+                          : Icons.select_all,
+                      color: Colors.white70,
+                      size: 24,
+                    ),
+                    tooltip: 'Selecionar Tudo',
+                  ),
+                _buildSelectionToggle(),
+              ],
+            ),
           ],
         ),
       ),
@@ -1474,17 +1568,37 @@ class _DashboardPageState extends State<DashboardPage> {
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: () {
-                  _markAsContacted(lead['id']);
-                  Navigator.pop(context);
+                  if (lead['contatado'] == true) {
+                    // RESTORE
+                    _client
+                        .from('leads')
+                        .update({'contatado': false})
+                        .eq('id', lead['id'])
+                        .then((_) {
+                          Navigator.pop(context);
+                        });
+                  } else {
+                    _markAsContacted(lead['id']);
+                    Navigator.pop(context);
+                  }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white10,
+                  backgroundColor: lead['contatado'] == true
+                      ? Colors.green.withOpacity(0.1)
+                      : Colors.white10,
                   minimumSize: const Size(double.infinity, 56),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
+                  side: lead['contatado'] == true
+                      ? const BorderSide(color: Colors.green, width: 0.5)
+                      : null,
                 ),
-                child: const Text('Marcar como Contatado'),
+                child: Text(
+                  lead['contatado'] == true
+                      ? 'Restaurar Lead (Ativar)'
+                      : 'Marcar como Contatado',
+                ),
               ),
               const SizedBox(
                 height: 32,

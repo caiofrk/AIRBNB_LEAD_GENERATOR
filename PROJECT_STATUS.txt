@@ -140,12 +140,13 @@ NEXT STEPS (CRM EVOLUTION)
   - Fixed "Qualificados" stats logic to match UI scoring.
   - Added horizontal scroll protection for App Bar subtitle on small devices.
 
-[v2.3.2] Contact Verification Polish
-  - Refined Auto-Contact: Status now updates to "Contatado" only after user confirmation via SnackBar.
-  - Data Integrity: Prevents false positives in the CRM if the user returns from an app without messaging.
+[v2.3.5] UI Performance & Mass Selection
+  - Fixed Stream Bug: Stopped re-subscribing to Supabase on every checkbox toggle (eliminates flicker/reload).
+  - Select All: Added intelligent "Select All" / "Deselect All" button in the App Bar during Selection Mode.
+  - Context Aware: Select All only affects the leads currently visible in your filtered view.
 
 ================================================================================
-  Current Version: v2.3.2
+  Current Version: v2.3.5
   Git Range: HEAD
-  Last Updated: Feb 14, 2026 03:45 AM BRT
+  Last Updated: Feb 14, 2026 04:50 AM BRT
 ================================================================================
