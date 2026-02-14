@@ -67,6 +67,13 @@ APP UI CHANGES (v2.0.1 through v2.0.7)
     * "Pesquisar Contato" → Google searches "{host name} {bairro} contato telefone"
     * WhatsApp/Email only appear when real data exists in DB
 
+[v2.0.8] Host Categorization (Company vs Person)
+  - Added smart detection for professional hosts vs individuals.
+  - Logic: Name keywords (Stay, Luxury, Aluguel) + Portfolio Size (>2) + Word Count.
+  - Tags are stored in the 'badges' column for easy visibility in the CRM.
+  - All 94 existing leads have been bulk-categorized.
+  - No 5G connection required for this approach.
+
 
 DATABASE CLEANUPS
 --------------------------------------------------------------------------------

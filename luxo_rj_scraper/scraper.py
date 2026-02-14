@@ -66,6 +66,40 @@ def get_lux_score(price, title, photos_count, badges=None):
     return round(price_pts + kw_pts + photo_pts + badge_pts, 1)
 
 # ──────────────────────────────────────────────
+# HOST CATEGORIZATION (Company vs Person)
+# ──────────────────────────────────────────────
+COMPANY_KEYWORDS = [
+    'stay', 'luxury', 'rent', 'aluguel', 'temporada', 'admin', 'management', 
+    'gestão', 'gestao', 'group', 'grupo', 'properties', 'propriedades', 
+    'imóveis', 'imoveis', 'real estate', 'host', 'hospedagem', 'suítes', 
+    'suites', 'flat', 'apartment', 'apartamento', 'residencial', 
+    'services', 'serviços', 'concierge', 'vip', 'elite', 'rio', 'conforto'
+]
+
+def categorize_host(name, portfolio_size):
+    if not name:
+        return \"Person\"
+    
+    name_lower = name.lower()
+    
+    # Check portfolio size (strong indicator)
+    if portfolio_size and portfolio_size > 2:
+        return \"Company\"
+    
+    # Check for company keywords
+    for kw in COMPANY_KEYWORDS:
+        if kw in name_lower:
+            return \"Company\"
+            
+    # Check word count
+    words = name.split()
+    if len(words) > 4:
+        return \"Company\"
+    
+    # DEFAULT
+    return \"Person\"
+
+# ──────────────────────────────────────────────
 # DEEP SCRAPE — visits a listing, gets everything
 # ──────────────────────────────────────────────
 def deep_analyze_listing(driver, lead_id, url):
@@ -79,6 +113,10 @@ def deep_analyze_listing(driver, lead_id, url):
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         page_text = soup.get_text().lower()
         updates = {"intelligence_status": "ready"}
+        
+        # Fetch current data to preserve existing manually added info
+        curr_resp = supabase.table("leads").select("badges, anfitriao").eq("id", lead_id).execute()
+        lead_data = curr_resp.data[0] if curr_resp.data else {}
 
         # ─── 1. Description ───
         desc_el = soup.select_one(
@@ -505,6 +543,25 @@ def deep_analyze_listing(driver, lead_id, url):
                     print(f"    ║ Price: R$ {updates['preco_noite']}/night")
         except:
             pass
+
+        # ─── 7. Host Categorization ───
+        host_name_final = updates.get('anfitriao')
+        portfolio_final = updates.get('host_portfolio_size', 1)
+        host_cat = categorize_host(host_name_final, portfolio_final)
+        
+        current_badges = updates.get('badges') or (lead_data.get('badges') if 'lead_data' in locals() else []) or []
+        if isinstance(current_badges, str):
+            try: current_badges = json.loads(current_badges)
+            except: current_badges = []
+        
+        # Add category tag to badges list
+        cat_tag = f"{host_cat} Host"
+        # Clear old ones and add new
+        current_badges = [b for b in current_badges if b not in ["Company Host", "Person Host", "Unknown Host"]]
+        current_badges.append(cat_tag)
+        updates['badges'] = current_badges
+        
+        print(f"    ║ Categorized: {cat_tag}")
 
         # ─── Save ───
         supabase.table("leads").update(updates).eq("id", lead_id).execute()
