@@ -29,7 +29,6 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF0F172A),
         primaryColor: const Color(0xFF6366F1),
-        fontFamily: 'Inter',
         useMaterial3: true,
       ),
       home: const DashboardPage(),
@@ -95,11 +94,11 @@ class _DashboardPageState extends State<DashboardPage> {
               // 3. APPLY "THE EQUATION" (Luxury Rate) - OPTIMIZED
               int N = allLeads.length;
               if (N > 0) {
-                // Pre-calculate ranks for all prices to avoid O(N^2) builds
+                // Pre-calculate ranks for all prices for ALL leads to fix Stats
                 List<double> allPrices = allLeads
                     .map((l) => (l['preco_noite'] as num?)?.toDouble() ?? 0.0)
                     .toList();
-                allPrices.sort((a, b) => b.compareTo(a)); // High to Low
+                allPrices.sort((a, b) => b.compareTo(a));
 
                 final Map<double, int> priceToRank = {};
                 for (int i = 0; i < allPrices.length; i++) {
@@ -108,11 +107,14 @@ class _DashboardPageState extends State<DashboardPage> {
                   }
                 }
 
-                for (var l in filteredLeads) {
+                // Apply to ALL leads first (for Stats)
+                for (var l in allLeads) {
                   final price = (l['preco_noite'] as num?)?.toDouble() ?? 0.0;
                   int rank = priceToRank[price] ?? N;
                   l['relative_score'] = ((N - rank + 1) / N) * 100.0;
                 }
+
+                // Also ensure filteredLeads has it (they are refs to same maps)
               }
 
               // Apply Sorting (using normalized score)
@@ -487,17 +489,20 @@ class _DashboardPageState extends State<DashboardPage> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
-                        'v2.1.0',
+                        'v2.1.1',
                         style: TextStyle(fontSize: 10, color: Colors.white38),
                       ),
                     ),
                   ],
                 ),
-                Text(
-                  'Inteligência Imobiliária | powered by zaibatsu.tec',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.5),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Text(
+                    'Inteligência Imobiliária | powered by zaibatsu.tec',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
                   ),
                 ),
               ],
@@ -570,8 +575,9 @@ class _DashboardPageState extends State<DashboardPage> {
       0,
       (sum, l) => sum + (l['preco_noite'] ?? 0),
     );
+    // Use relative_score >= 80 for Qualified as it's what's shown in UI
     final qualifiedCount = leads
-        .where((l) => (l['lux_score'] ?? 0) >= 80)
+        .where((l) => (l['relative_score'] ?? 0.0) >= 80)
         .length;
     final totalLeads = leads.length;
 
@@ -750,7 +756,6 @@ class _DashboardPageState extends State<DashboardPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Expanded(
                               child: Text(
@@ -764,37 +769,6 @@ class _DashboardPageState extends State<DashboardPage> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            if ((lead['host_portfolio_size'] ?? 1) > 1)
-                              Container(
-                                margin: const EdgeInsets.only(left: 6),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.greenAccent.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  '${lead['host_portfolio_size']} imóveis',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.greenAccent.withOpacity(0.9),
-                                  ),
-                                ),
-                              ),
-                            if (timeAgo.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(left: 6),
-                                child: Text(
-                                  timeAgo,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.white.withOpacity(0.3),
-                                  ),
-                                ),
-                              ),
                           ],
                         ),
                         const SizedBox(height: 4),
@@ -815,6 +789,38 @@ class _DashboardPageState extends State<DashboardPage> {
                                 color: Colors.orange,
                               ),
                             ],
+                            const Spacer(),
+                            if ((lead['host_portfolio_size'] ?? 1) > 1)
+                              Container(
+                                margin: const EdgeInsets.only(left: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.greenAccent.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '${lead['host_portfolio_size']} imóveis',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.greenAccent.withOpacity(0.9),
+                                  ),
+                                ),
+                              ),
+                            if (timeAgo.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 6),
+                                child: Text(
+                                  timeAgo,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white.withOpacity(0.3),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ],

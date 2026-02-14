@@ -134,14 +134,14 @@ NEXT STEPS (CRM EVOLUTION)
   - Automated "Disparo" launches Airbnb listing pages in sequence for outreach.
   - Integrated Floating Action Button (FAB) for bulk actions.
 
-[v2.1.0] AI Sales Pitcher & Smart Outreach
-  - Integrated "AI-agent" logic for unique sales pitches.
-  - Automatically rephrases pitches based on "Manutenção Crítica" and "Cleanliness Gaps".
-  - Multi-template system injected via --- AI_INTEL_JSON --- in listing descriptions.
-  - Mass messaging now uses these personalized hooks for higher conversion.
+[v2.1.1] GUI Polish & Robustness
+  - Removed unbundled custom fonts causing character rendering issues.
+  - Redesigned Lead Cards to prevent property name truncation.
+  - Fixed "Qualificados" stats logic to match UI scoring.
+  - Added horizontal scroll protection for App Bar subtitle on small devices.
 
 ================================================================================
-  Current Version: v2.1.0
+  Current Version: v2.1.1
   Git Range: HEAD
-  Last Updated: Feb 13, 2026 11:55 PM BRT
+  Last Updated: Feb 14, 2026 12:45 AM BRT
 ================================================================================
