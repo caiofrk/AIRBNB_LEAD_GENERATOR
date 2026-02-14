@@ -50,6 +50,8 @@ class _DashboardPageState extends State<DashboardPage> {
   String _sortBy = 'score'; // 'score', 'price_asc', 'price_desc', 'newest'
   String _selectedBairro = 'Todos';
   final _currencyFormat = NumberFormat.simpleCurrency(locale: 'pt_BR');
+  final Set<String> _selectedHostIds = {};
+  bool _isSelectionMode = false;
 
   Stream<List<Map<String, dynamic>>> get _leadsStream =>
       _client.from('leads').stream(primaryKey: ['id']);
@@ -235,6 +237,161 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ),
       ),
+      floatingActionButton: _isSelectionMode && _selectedHostIds.isNotEmpty
+          ? StreamBuilder<List<Map<String, dynamic>>>(
+              stream: _leadsStream,
+              builder: (context, snapshot) {
+                final allLeads = snapshot.data ?? [];
+                var filtered = allLeads.where((l) {
+                  final matchSearch =
+                      (l['titulo'] ?? '').toLowerCase().contains(
+                        _searchQuery.toLowerCase(),
+                      ) ||
+                      (l['bairro'] ?? '').toLowerCase().contains(
+                        _searchQuery.toLowerCase(),
+                      ) ||
+                      (l['anfitriao'] ?? '').toLowerCase().contains(
+                        _searchQuery.toLowerCase(),
+                      );
+                  final matchBairro =
+                      _selectedBairro == 'Todos' ||
+                      (l['bairro'] ?? '') == _selectedBairro;
+                  final isNotContacted = l['contatado'] != true;
+                  return matchSearch && matchBairro && isNotContacted;
+                }).toList();
+
+                return FloatingActionButton.extended(
+                  onPressed: () => _showMassMessageSheet(filtered),
+                  icon: const Icon(Icons.send, color: Colors.white),
+                  label: Text('Mensagem (${_selectedHostIds.length})'),
+                  backgroundColor: const Color(0xFF6366F1),
+                );
+              },
+            )
+          : null,
+    );
+  }
+
+  void _showMassMessageSheet(List<Map<String, dynamic>> allLeads) {
+    final selectedLeads = allLeads
+        .where((l) => _selectedHostIds.contains(l['id']))
+        .toList();
+    final TextEditingController _msgController = TextEditingController(
+      text:
+          "Olá! Notei seu perfil e gostaria de conversar sobre consultoria para gestão de imóveis de luxo no Rio.",
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: const BoxDecoration(
+          color: Color(0xFF0F172A),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Mensagem em Massa',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close, color: Colors.white54),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Enviando para ${selectedLeads.length} contatos selecionados.',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Template da Mensagem',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white70,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _msgController,
+              maxLines: 5,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.05),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const Spacer(),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+
+                int sent = 0;
+                for (var lead in selectedLeads) {
+                  sent++;
+                  final link = lead['link_imovel'];
+                  if (link != null) {
+                    final url = Uri.parse(link);
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(
+                        url,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    }
+                  }
+                  await Future.delayed(const Duration(milliseconds: 500));
+                }
+
+                setState(() {
+                  _isSelectionMode = false;
+                  _selectedHostIds.clear();
+                });
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Iniciando envio para $sent hosts no Airbnb...',
+                      ),
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+                minimumSize: const Size(double.infinity, 56),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: const Text(
+                'Disparar Seqüência',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -330,7 +487,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
-                        'v1.2.6',
+                        'v2.1.0',
                         style: TextStyle(fontSize: 10, color: Colors.white38),
                       ),
                     ),
@@ -345,26 +502,25 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ],
             ),
-            _buildProfileIcon(),
+            _buildSelectionToggle(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProfileIcon() {
-    return Container(
-      padding: const EdgeInsets.all(2),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
-        ),
-        shape: BoxShape.circle,
-      ),
-      child: const CircleAvatar(
-        radius: 20,
-        backgroundColor: Color(0xFF1E293B),
-        child: Icon(Icons.person_outline, color: Colors.white),
+  Widget _buildSelectionToggle() {
+    return IconButton(
+      onPressed: () {
+        setState(() {
+          _isSelectionMode = !_isSelectionMode;
+          if (!_isSelectionMode) _selectedHostIds.clear();
+        });
+      },
+      icon: Icon(
+        _isSelectionMode ? Icons.close : Icons.checklist_rtl,
+        color: _isSelectionMode ? Colors.pinkAccent : Colors.white70,
+        size: 28,
       ),
     );
   }
@@ -543,7 +699,19 @@ class _DashboardPageState extends State<DashboardPage> {
     final timeAgo = _formatTimeAgo(lead['criado_em'] ?? lead['created_at']);
 
     return _AnimatedPress(
-      onTap: () => _showLeadDetails(lead),
+      onTap: () {
+        if (_isSelectionMode) {
+          setState(() {
+            if (_selectedHostIds.contains(lead['id'])) {
+              _selectedHostIds.remove(lead['id']);
+            } else {
+              _selectedHostIds.add(lead['id']);
+            }
+          });
+        } else {
+          _showLeadDetails(lead);
+        }
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
@@ -559,6 +727,22 @@ class _DashboardPageState extends State<DashboardPage> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
+                  if (_isSelectionMode)
+                    Checkbox(
+                      value: _selectedHostIds.contains(lead['id']),
+                      onChanged: (val) {
+                        setState(() {
+                          if (val == true) {
+                            _selectedHostIds.add(lead['id']);
+                          } else {
+                            _selectedHostIds.remove(lead['id']);
+                          }
+                        });
+                      },
+                      activeColor: const Color(0xFF6366F1),
+                      side: const BorderSide(color: Colors.white30),
+                    ),
+                  const SizedBox(width: 12),
                   _buildScoreIndicator(score),
                   const SizedBox(width: 16),
                   Expanded(
@@ -636,11 +820,13 @@ class _DashboardPageState extends State<DashboardPage> {
                       ],
                     ),
                   ),
-                  const Icon(
-                    Icons.chevron_right,
-                    color: Colors.white24,
-                    size: 20,
-                  ),
+                  _isSelectionMode
+                      ? const SizedBox.shrink()
+                      : const Icon(
+                          Icons.chevron_right,
+                          color: Colors.white24,
+                          size: 20,
+                        ),
                 ],
               ),
             ),

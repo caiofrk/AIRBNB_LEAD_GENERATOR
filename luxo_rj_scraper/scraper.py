@@ -563,6 +563,54 @@ def deep_analyze_listing(driver, lead_id, url):
         
         print(f"    ║ Categorized: {cat_tag}")
 
+        # ─── 8. GENERATE AI SALES PITCH ───
+        try:
+            anfitriao_pitch = updates.get('anfitriao') or 'Parceiro'
+            titulo_pitch = updates.get('titulo') or 'seu imóvel'
+            maintenance = updates.get('maintenance_items') or []
+            gap = updates.get('cleanliness_gap')
+            
+            # Base segments for different maintenance items
+            maint_segments = {
+                'Mármore/Vidro': "Notei que seu imóvel possui superfícies nobres como mármore e vidros amplos, que exigem um cuidado especializado para manter o brilho e a sofisticação que seus hóspedes esperam.",
+                'Piscina/Jacuzzi': "Como sua propriedade oferece o diferencial de piscina/jacuzzi, sabemos que a manutenção impecável desses itens é o que separa um comentário 5 estrelas de uma reclamação sobre higiene.",
+                'Automação': "Vi que você investiu em automação e tecnologia. Esse tipo de setup exige uma equipe que entenda de cuidados técnicos para não comprometer os sistemas durante a operação.",
+                'Café Premium': "O capricho com mimos como café premium mostra que você preza pela experiência. Nossa gestão foca em elevar esse padrão em todos os pontos de contato."
+            }
+            
+            selected_segments = [maint_segments[m] for m in maintenance if m in maint_segments]
+            
+            # Cleanliness Gap handling
+            if gap:
+                gap_segment = f"Vi alguns comentários sobre a limpeza (mencionaram: {gap}). Em locações de alto padrão, esses detalhes impactam diretamente seu ranking e preço médio. Podemos resolver isso definitivamente."
+            else:
+                gap_segment = "Seu imóvel tem um potencial incrível para o mercado de ultra-luxo, e uma gestão operacional de precisão pode ajudar a maximizar seu retorno."
+
+            # Combine into a unique pitch
+            pitch = f"Olá {anfitriao_pitch}! Tudo bem?\n\n"
+            pitch += f"Estava analisando o perfil do seu imóvel '{titulo_pitch}' e fiquei impressionado com o padrão. "
+            if selected_segments:
+                pitch += " ".join(selected_segments) + " "
+            pitch += f"\n\n{gap_segment}\n\n"
+            pitch += "Trabalhamos com consultoria e gestão operacional focada exatamente nesse nível de exigência. Gostaria de agendar uma breve conversa ou uma visita técnica sem compromisso?\n\nNo aguardo!"
+            
+            # Create AI Intel Block
+            ai_intel = {
+                "luxury": (updates.get('lux_score') or 0) / 100.0,
+                "wa_hook": pitch,
+                "analysis_date": time.strftime("%Y-%m-%d %H:%M:%S")
+            }
+            
+            # Inject into description
+            new_desc = (updates.get('descricao') or lead_data.get('descricao') or "")
+            if "--- AI_INTEL_JSON ---" not in new_desc:
+                updates['descricao'] = new_desc + f"\n\n--- AI_INTEL_JSON ---\n{json.dumps(ai_intel, indent=2)}\n---"
+            
+            print(f"    ║ AI Pitch generated: {len(pitch)} chars")
+            
+        except Exception as ai_err:
+            print(f"    ║ ⚠ AI Pitch generation failed: {ai_err}")
+
         # ─── Save ───
         supabase.table("leads").update(updates).eq("id", lead_id).execute()
         print(f"    ╚══ [DONE] Lead {lead_id} → 'ready'\n")

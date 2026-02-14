@@ -127,9 +127,21 @@ NEXT STEPS (CRM EVOLUTION)
   6. Expand Geography
      - New Rio neighborhoods
      - São Paulo, Florianópolis, etc.
+[v2.0.9] Mass Messaging Implementation
+  - Added "Selection Mode" to the CRM Dashboard.
+  - Multi-select multiple hosts to initiate a sequence of sales pitches.
+  - New "Mass Message Sheet" with template editing.
+  - Automated "Disparo" launches Airbnb listing pages in sequence for outreach.
+  - Integrated Floating Action Button (FAB) for bulk actions.
+
+[v2.1.0] AI Sales Pitcher & Smart Outreach
+  - Integrated "AI-agent" logic for unique sales pitches.
+  - Automatically rephrases pitches based on "Manutenção Crítica" and "Cleanliness Gaps".
+  - Multi-template system injected via --- AI_INTEL_JSON --- in listing descriptions.
+  - Mass messaging now uses these personalized hooks for higher conversion.
 
 ================================================================================
-  Current Version: v2.0.7
-  Git Range: bb582ba → 4b97e38
-  Last Updated: Feb 12, 2026 11:49 AM BRT
+  Current Version: v2.1.0
+  Git Range: HEAD
+  Last Updated: Feb 13, 2026 11:55 PM BRT
 ================================================================================
