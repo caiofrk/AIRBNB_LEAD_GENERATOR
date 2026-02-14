@@ -140,12 +140,12 @@ NEXT STEPS (CRM EVOLUTION)
   - Fixed "Qualificados" stats logic to match UI scoring.
   - Added horizontal scroll protection for App Bar subtitle on small devices.
 
-[v2.1.2] Accessibility & Layout Fixes
-  - Added bottom safety padding to Lead Details sheet to prevent Android Nav Bar overlap.
-  - Improved scrollable bottom area with explicit spacer for full button accessibility.
+[v2.3.2] Contact Verification Polish
+  - Refined Auto-Contact: Status now updates to "Contatado" only after user confirmation via SnackBar.
+  - Data Integrity: Prevents false positives in the CRM if the user returns from an app without messaging.
 
 ================================================================================
-  Current Version: v2.1.2
+  Current Version: v2.3.2
   Git Range: HEAD
-  Last Updated: Feb 14, 2026 01:25 AM BRT
+  Last Updated: Feb 14, 2026 03:45 AM BRT
 ================================================================================

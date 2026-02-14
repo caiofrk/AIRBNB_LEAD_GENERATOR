@@ -51,6 +51,8 @@ class _DashboardPageState extends State<DashboardPage> {
   final _currencyFormat = NumberFormat.simpleCurrency(locale: 'pt_BR');
   final Set<String> _selectedHostIds = {};
   bool _isSelectionMode = false;
+  String _pipelineFilter =
+      'Todos'; // 'Todos', 'Novo', 'Contatado', 'Respondeu', 'Interessado', 'Venda'
 
   Stream<List<Map<String, dynamic>>> get _leadsStream =>
       _client.from('leads').stream(primaryKey: ['id']);
@@ -88,7 +90,21 @@ class _DashboardPageState extends State<DashboardPage> {
                     _selectedBairro == 'Todos' ||
                     (l['bairro'] ?? '') == _selectedBairro;
                 final isNotContacted = l['contatado'] != true;
-                return matchSearch && matchBairro && isNotContacted;
+
+                final badges = l['badges'] as List? ?? [];
+                String status = 'Novo';
+                for (var b in badges) {
+                  if (b.toString().startsWith('status:')) {
+                    status = b.toString().split(':').last;
+                  }
+                }
+                final matchPipeline =
+                    _pipelineFilter == 'Todos' || status == _pipelineFilter;
+
+                return matchSearch &&
+                    matchBairro &&
+                    isNotContacted &&
+                    matchPipeline;
               }).toList();
 
               // 3. APPLY "THE EQUATION" (Luxury Rate) - OPTIMIZED
@@ -489,7 +505,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
-                        'v2.1.2',
+                        'v2.3.2',
                         style: TextStyle(fontSize: 10, color: Colors.white38),
                       ),
                     ),
@@ -895,6 +911,7 @@ class _DashboardPageState extends State<DashboardPage> {
       builder: (context) => _buildReactiveDetailSheet(
         initialLead['id'],
         initialScore: initialLead['relative_score'],
+        groupedListings: initialLead['_grouped_listings'],
       ),
     );
   }
@@ -937,7 +954,11 @@ class _DashboardPageState extends State<DashboardPage> {
     return {};
   }
 
-  Widget _buildReactiveDetailSheet(dynamic leadId, {double? initialScore}) {
+  Widget _buildReactiveDetailSheet(
+    dynamic leadId, {
+    double? initialScore,
+    List<Map<String, dynamic>>? groupedListings,
+  }) {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _client.from('leads').stream(primaryKey: ['id']).eq('id', leadId),
       builder: (context, snapshot) {
@@ -952,14 +973,60 @@ class _DashboardPageState extends State<DashboardPage> {
           );
         }
         final lead = snapshot.data!.first;
-        return _buildDetailContent(lead, relativeScore: initialScore);
+        return _buildDetailContent(
+          lead,
+          relativeScore: initialScore,
+          groupedListings: groupedListings,
+        );
       },
     );
+  }
+
+  String _getLeadStatus(Map<String, dynamic> lead) {
+    final badges = lead['badges'] as List? ?? [];
+    for (var b in badges) {
+      if (b.toString().startsWith('status:')) {
+        return b.toString().split(':').last;
+      }
+    }
+    return 'Novo';
+  }
+
+  Future<void> _updateLeadStatus(
+    Map<String, dynamic> lead,
+    String newStatus,
+  ) async {
+    final List<dynamic> currentBadges = List.from(lead['badges'] ?? []);
+    currentBadges.removeWhere((b) => b.toString().startsWith('status:'));
+    currentBadges.add('status:$newStatus');
+
+    // Also sync the old 'contatado' boolean for backward compat
+    final bool isContacted = [
+      'Contatado',
+      'Respondeu',
+      'Interessado',
+      'Venda',
+    ].contains(newStatus);
+
+    await _client
+        .from('leads')
+        .update({'badges': currentBadges, 'contatado': isContacted})
+        .eq('id', lead['id']);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Status atualizado para $newStatus'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
   }
 
   Widget _buildDetailContent(
     Map<String, dynamic> lead, {
     double? relativeScore,
+    List<Map<String, dynamic>>? groupedListings,
   }) {
     final aiIntel = _parseAIIntel(lead);
     final double aiLuxScore = (aiIntel['luxury'] as num? ?? 0.0) * 100.0;
@@ -990,6 +1057,51 @@ class _DashboardPageState extends State<DashboardPage> {
                     color: Colors.white24,
                     borderRadius: BorderRadius.circular(2),
                   ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Status do Funil',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white38,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children:
+                      [
+                        'Novo',
+                        'Contatado',
+                        'Respondeu',
+                        'Interessado',
+                        'Venda',
+                      ].map((s) {
+                        final currentStatus = _getLeadStatus(lead);
+                        final isSelected = s == currentStatus;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: ChoiceChip(
+                            label: Text(
+                              s,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              if (selected) _updateLeadStatus(lead, s);
+                            },
+                            selectedColor: const Color(0xFF6366F1),
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : Colors.white60,
+                            ),
+                            backgroundColor: Colors.white.withOpacity(0.05),
+                            showCheckmark: false,
+                          ),
+                        );
+                      }).toList(),
                 ),
               ),
               const SizedBox(height: 24),
@@ -1110,6 +1222,86 @@ class _DashboardPageState extends State<DashboardPage> {
                         ],
                       ),
                     ),
+                    if (groupedListings != null &&
+                        groupedListings.length > 1) ...[
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Portfólio do Anfitrião',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ...groupedListings.map((listing) {
+                        final isCurrent = listing['id'] == lead['id'];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isCurrent
+                                ? const Color(0xFF6366F1).withOpacity(0.1)
+                                : Colors.white.withOpacity(0.02),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isCurrent
+                                  ? const Color(0xFF6366F1).withOpacity(0.3)
+                                  : Colors.white.withOpacity(0.05),
+                            ),
+                          ),
+                          child: InkWell(
+                            onTap: () => _openAirbnb(listing),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        listing['titulo'] ?? 'Sem título',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: isCurrent
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          color: isCurrent
+                                              ? Colors.white
+                                              : Colors.white70,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${listing['bairro']} • ${_currencyFormat.format(listing['preco_noite'] ?? 0)}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.white.withOpacity(0.4),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (isCurrent)
+                                  const Icon(
+                                    Icons.check_circle,
+                                    color: Color(0xFF6366F1),
+                                    size: 16,
+                                  )
+                                else
+                                  const Icon(
+                                    Icons.arrow_forward_ios,
+                                    color: Colors.white24,
+                                    size: 12,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ],
                   ];
                 }
                 return <Widget>[];
@@ -1464,6 +1656,28 @@ class _DashboardPageState extends State<DashboardPage> {
     );
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
+      _promptContact(lead);
+    }
+  }
+
+  void _promptContact(Map<String, dynamic> lead) {
+    if (_getLeadStatus(lead) == 'Novo') {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFF1E293B),
+          content: Text(
+            'Confirmar contato com ${lead['anfitriao'] ?? 'lead'}?',
+            style: const TextStyle(color: Colors.white),
+          ),
+          action: SnackBarAction(
+            label: 'SIM',
+            textColor: const Color(0xFF6366F1),
+            onPressed: () => _updateLeadStatus(lead, 'Contatado'),
+          ),
+          duration: const Duration(seconds: 6),
+        ),
+      );
     }
   }
 
@@ -1505,6 +1719,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
     if (await canLaunchUrl(url)) {
       await launchUrl(url);
+      _promptContact(lead);
     } else {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1536,6 +1751,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final url = Uri.parse(link);
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
+      _promptContact(lead);
     } else {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1675,6 +1891,35 @@ class _DashboardPageState extends State<DashboardPage> {
                       )
                       .toList(),
                 ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Etapa do Funil',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white70,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                children:
+                    [
+                      'Todos',
+                      'Novo',
+                      'Contatado',
+                      'Respondeu',
+                      'Interessado',
+                      'Venda',
+                    ].map((s) {
+                      return _buildFilterChip(
+                        s,
+                        s,
+                        _pipelineFilter,
+                        (val) => setState(() => _pipelineFilter = val),
+                        setModalState,
+                      );
+                    }).toList(),
               ),
               const SizedBox(height: 32),
               ElevatedButton(
