@@ -489,7 +489,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
-                        'v2.1.1',
+                        'v2.1.2',
                         style: TextStyle(fontSize: 10, color: Colors.white38),
                       ),
                     ),
@@ -979,7 +979,7 @@ class _DashboardPageState extends State<DashboardPage> {
           },
           child: ListView(
             controller: controller,
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 48),
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
               Center(
@@ -1294,6 +1294,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
                 child: const Text('Marcar como Contatado'),
               ),
+              const SizedBox(
+                height: 32,
+              ), // Safety spacer for Android navigation bars
             ],
           ),
         ),
