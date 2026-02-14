@@ -53,6 +53,7 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _isSelectionMode = false;
   String _pipelineFilter = 'Todos';
   bool _showArchived = false; // Toggle for "Contacted" view
+  bool _useDeduplication = true; // NEW: Toggle for host grouping
 
   late Stream<List<Map<String, dynamic>>> _leadsStream;
 
@@ -136,10 +137,44 @@ class _DashboardPageState extends State<DashboardPage> {
                 for (var l in allLeads) {
                   final price = (l['preco_noite'] as num?)?.toDouble() ?? 0.0;
                   int rank = priceToRank[price] ?? N;
-                  l['relative_score'] = ((N - rank + 1) / N) * 100.0;
-                }
 
-                // Also ensure filteredLeads has it (they are refs to same maps)
+                  // 1. Price Rank Score (45%)
+                  double rankScore = ((N - rank + 1) / N) * 100.0;
+
+                  // 2. Portfolio Score (25%) - Reward Scale
+                  final portfolioSize =
+                      (l['host_portfolio_size'] as num?)?.toDouble() ?? 1.0;
+                  double portfolioScore = (portfolioSize * 10.0).clamp(
+                    0.0,
+                    100.0,
+                  );
+
+                  // 3. Maintenance Score (20%) - Reward Need
+                  final maintenanceCount =
+                      (l['maintenance_items'] as List?)?.length ?? 0;
+                  double maintenanceScore = (maintenanceCount * 20.0).clamp(
+                    0.0,
+                    100.0,
+                  );
+
+                  // 4. Host Type Score (10%) - Professionalism
+                  final badges = l['badges'] as List?;
+                  bool isPro =
+                      badges?.any(
+                        (b) =>
+                            b.toString().contains('Company') ||
+                            b.toString().contains('Empresa'),
+                      ) ??
+                      false;
+                  double hostTypeScore = isPro ? 100.0 : 50.0;
+
+                  // FINAL WEIGHTED SCORE
+                  l['relative_score'] =
+                      (rankScore * 0.45) +
+                      (portfolioScore * 0.25) +
+                      (maintenanceScore * 0.20) +
+                      (hostTypeScore * 0.10);
+                }
               }
 
               // Apply Sorting (using normalized score)
@@ -173,69 +208,77 @@ class _DashboardPageState extends State<DashboardPage> {
                   break;
               }
 
-              // Deduplicate by host — show best listing per host
-              final Map<String, List<Map<String, dynamic>>> hostGroups = {};
-              final List<Map<String, dynamic>> ungrouped = [];
-              for (var l in filteredLeads) {
-                final host = l['anfitriao'] as String?;
-                if (host != null &&
-                    host.isNotEmpty &&
-                    host != 'Consultar Perfil') {
-                  hostGroups.putIfAbsent(host, () => []).add(l);
-                } else {
-                  ungrouped.add(l);
+              // 4. DEDUPLICATION LOGIC
+              List<Map<String, dynamic>> finalLeads = [];
+              if (_useDeduplication) {
+                // Deduplicate by host — show best listing per host
+                final Map<String, List<Map<String, dynamic>>> hostGroups = {};
+                final List<Map<String, dynamic>> ungrouped = [];
+                for (var l in filteredLeads) {
+                  final host = l['anfitriao'] as String?;
+                  if (host != null &&
+                      host.isNotEmpty &&
+                      host != 'Consultar Perfil') {
+                    hostGroups.putIfAbsent(host, () => []).add(l);
+                  } else {
+                    ungrouped.add(l);
+                  }
                 }
+
+                for (var entry in hostGroups.entries) {
+                  final listings = entry.value;
+                  // Sort by relative_score descending, pick best
+                  listings.sort(
+                    (a, b) => ((b['relative_score'] as num?) ?? 0).compareTo(
+                      (a['relative_score'] as num?) ?? 0,
+                    ),
+                  );
+                  final representative = Map<String, dynamic>.from(
+                    listings.first,
+                  );
+                  representative['_grouped_count'] = listings.length;
+                  representative['_grouped_listings'] = listings;
+                  finalLeads.add(representative);
+                }
+                for (var l in ungrouped) {
+                  final rep = Map<String, dynamic>.from(l);
+                  rep['_grouped_count'] = 1;
+                  finalLeads.add(rep);
+                }
+              } else {
+                // Return all listings (raw mode)
+                finalLeads = filteredLeads.map((l) {
+                  final rep = Map<String, dynamic>.from(l);
+                  rep['_grouped_count'] = 1;
+                  return rep;
+                }).toList();
               }
 
-              // For each host group, pick the best-scored listing as representative
-              final List<Map<String, dynamic>> dedupedLeads = [];
-              for (var entry in hostGroups.entries) {
-                final listings = entry.value;
-                // Sort by relative_score descending, pick best
-                listings.sort(
-                  (a, b) => ((b['relative_score'] as num?) ?? 0).compareTo(
-                    (a['relative_score'] as num?) ?? 0,
-                  ),
-                );
-                final representative = Map<String, dynamic>.from(
-                  listings.first,
-                );
-                representative['_grouped_count'] = listings.length;
-                representative['_grouped_listings'] = listings;
-                dedupedLeads.add(representative);
-              }
-              // Add ungrouped leads
-              for (var l in ungrouped) {
-                final rep = Map<String, dynamic>.from(l);
-                rep['_grouped_count'] = 1;
-                dedupedLeads.add(rep);
-              }
-
-              // Re-sort deduped list
+              // Re-sort final list
               switch (_sortBy) {
                 case 'score':
-                  dedupedLeads.sort(
+                  finalLeads.sort(
                     (a, b) => ((b['relative_score'] as num?) ?? 0).compareTo(
                       (a['relative_score'] as num?) ?? 0,
                     ),
                   );
                   break;
                 case 'price_asc':
-                  dedupedLeads.sort(
+                  finalLeads.sort(
                     (a, b) => (a['preco_noite'] ?? 0).compareTo(
                       b['preco_noite'] ?? 0,
                     ),
                   );
                   break;
                 case 'price_desc':
-                  dedupedLeads.sort(
+                  finalLeads.sort(
                     (a, b) => (b['preco_noite'] ?? 0).compareTo(
                       a['preco_noite'] ?? 0,
                     ),
                   );
                   break;
                 case 'newest':
-                  dedupedLeads.sort(
+                  finalLeads.sort(
                     (a, b) => (b['created_at'] ?? b['criado_em'] ?? '')
                         .compareTo(a['created_at'] ?? a['criado_em'] ?? ''),
                   );
@@ -252,11 +295,11 @@ class _DashboardPageState extends State<DashboardPage> {
                 child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
-                    _buildAppBar(dedupedLeads),
+                    _buildAppBar(finalLeads),
                     _buildSearchBox(allLeads),
                     _buildStatsSummary(allLeads),
                     _buildQuickSortBar(),
-                    _buildLeadsList(snapshot, dedupedLeads),
+                    _buildLeadsList(snapshot, finalLeads),
                   ],
                 ),
               );
@@ -529,49 +572,52 @@ class _DashboardPageState extends State<DashboardPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Text(
-                      'Zai',
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Zai',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white12,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'v2.5.0',
+                          style: TextStyle(fontSize: 10, color: Colors.white38),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Text(
+                      'Inteligência Imobiliária | powered by zaibatsu.tec',
                       style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white, // Added color for visibility
-                        letterSpacing: -0.5,
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.5),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white12,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'v2.3.5',
-                        style: TextStyle(fontSize: 10, color: Colors.white38),
-                      ),
-                    ),
-                  ],
-                ),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Text(
-                    'Inteligência Imobiliária | powered by zaibatsu.tec',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white.withOpacity(0.5),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            const SizedBox(width: 16),
             Row(
               children: [
                 IconButton(
@@ -1905,6 +1951,7 @@ class _DashboardPageState extends State<DashboardPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Container(
           decoration: const BoxDecoration(
@@ -1912,148 +1959,182 @@ class _DashboardPageState extends State<DashboardPage> {
             borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
           ),
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Filtros e Ordenação',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _sortBy = 'score';
-                        _selectedBairro = 'Todos';
-                      });
-                      Navigator.pop(context);
-                    },
-                    child: const Text('Limpar'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Ordenar por',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white70,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Filtros e Ordenação',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _sortBy = 'score';
+                          _selectedBairro = 'Todos';
+                        });
+                        Navigator.pop(context);
+                      },
+                      child: const Text('Limpar'),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                children: [
-                  _buildFilterChip(
-                    'Qualidade',
-                    'score',
-                    _sortBy,
-                    (val) => setState(() => _sortBy = val),
-                    setModalState,
-                  ),
-                  _buildFilterChip(
-                    'Menor Preço',
-                    'price_asc',
-                    _sortBy,
-                    (val) => setState(() => _sortBy = val),
-                    setModalState,
-                  ),
-                  _buildFilterChip(
-                    'Maior Preço',
-                    'price_desc',
-                    _sortBy,
-                    (val) => setState(() => _sortBy = val),
-                    setModalState,
-                  ),
-                  _buildFilterChip(
-                    'Mais Recente',
-                    'newest',
-                    _sortBy,
-                    (val) => setState(() => _sortBy = val),
-                    setModalState,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Bairros',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white70,
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 40,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: bairros
-                      .map(
-                        (b) => Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: _buildFilterChip(
-                            b,
-                            b,
-                            _selectedBairro,
-                            (val) => setState(() => _selectedBairro = val),
-                            setModalState,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Etapa do Funil',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white70,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                children:
-                    [
-                      'Todos',
-                      'Novo',
-                      'Contatado',
-                      'Respondeu',
-                      'Interessado',
-                      'Venda',
-                    ].map((s) {
-                      return _buildFilterChip(
-                        s,
-                        s,
-                        _pipelineFilter,
-                        (val) => setState(() => _pipelineFilter = val),
-                        setModalState,
-                      );
-                    }).toList(),
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1),
-                  minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: const Text(
-                  'Aplicar Filtros',
+                const SizedBox(height: 24),
+                const Text(
+                  'Ordenar por',
                   style: TextStyle(
-                    color: Colors.white,
                     fontWeight: FontWeight.bold,
+                    color: Colors.white70,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    _buildFilterChip(
+                      'Qualidade',
+                      'score',
+                      _sortBy,
+                      (val) => setState(() => _sortBy = val),
+                      setModalState,
+                    ),
+                    _buildFilterChip(
+                      'Menor Preço',
+                      'price_asc',
+                      _sortBy,
+                      (val) => setState(() => _sortBy = val),
+                      setModalState,
+                    ),
+                    _buildFilterChip(
+                      'Maior Preço',
+                      'price_desc',
+                      _sortBy,
+                      (val) => setState(() => _sortBy = val),
+                      setModalState,
+                    ),
+                    _buildFilterChip(
+                      'Mais Recente',
+                      'newest',
+                      _sortBy,
+                      (val) => setState(() => _sortBy = val),
+                      setModalState,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Bairros',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white70,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 40,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: bairros
+                        .map(
+                          (b) => Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: _buildFilterChip(
+                              b,
+                              b,
+                              _selectedBairro,
+                              (val) => setState(() => _selectedBairro = val),
+                              setModalState,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Etapa do Funil',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white70,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  children:
+                      [
+                        'Todos',
+                        'Novo',
+                        'Contatado',
+                        'Respondeu',
+                        'Interessado',
+                        'Venda',
+                      ].map((s) {
+                        return _buildFilterChip(
+                          s,
+                          s,
+                          _pipelineFilter,
+                          (val) => setState(() => _pipelineFilter = val),
+                          setModalState,
+                        );
+                      }).toList(),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Visualização',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white70,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'Deduplicação por Anfitrião',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  subtitle: Text(
+                    _useDeduplication
+                        ? 'Mostra apenas o melhor lead por host'
+                        : 'Mostra todos os anúncios individualmente',
+                    style: TextStyle(fontSize: 11, color: Colors.white38),
+                  ),
+                  value: _useDeduplication,
+                  activeColor: const Color(0xFF6366F1),
+                  onChanged: (val) {
+                    setState(() => _useDeduplication = val);
+                    setModalState(() {});
+                  },
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                    minimumSize: const Size(double.infinity, 56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Aplicar Filtros',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+              ],
+            ),
           ),
         ),
       ),

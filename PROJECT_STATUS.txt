@@ -105,28 +105,13 @@ TECH STACK
 NEXT STEPS (CRM EVOLUTION)
 --------------------------------------------------------------------------------
 
-  1. Lead Deduplication by Host
-     - Group multiple listings under same host into one lead
-
-  2. Contact Management
-     - Contact status tracking: não contatado → contatado → respondeu → fechou
-     - Follow-up reminders / timestamps
-
-  3. Lead Scoring Improvement
-     - Factor in portfolio size (bigger host = bigger deal)
-     - Factor in Superhost status
-     - Factor in maintenance items (more = more opportunities)
-
-   4. Host-Centric View
-      - Tap a host → see ALL their listings in one place
-
-   5. Pipeline/Funnel View
-     - Visual funnel: New → Contacted → Responded → Closed
-     - Conversion metrics
-
-  6. Expand Geography
+  1. Expand Geography
      - New Rio neighborhoods
      - São Paulo, Florianópolis, etc.
+
+  2. Automated Follow-ups
+     - Notification system for 'Responded' leads.
+     - Scheduled reminders.
 [v2.0.9] Mass Messaging Implementation
   - Added "Selection Mode" to the CRM Dashboard.
   - Multi-select multiple hosts to initiate a sequence of sales pitches.
@@ -134,19 +119,36 @@ NEXT STEPS (CRM EVOLUTION)
   - Automated "Disparo" launches Airbnb listing pages in sequence for outreach.
   - Integrated Floating Action Button (FAB) for bulk actions.
 
-[v2.1.1] GUI Polish & Robustness
-  - Removed unbundled custom fonts causing character rendering issues.
-  - Redesigned Lead Cards to prevent property name truncation.
-  - Fixed "Qualificados" stats logic to match UI scoring.
-  - Added horizontal scroll protection for App Bar subtitle on small devices.
+[v2.2.0] Host-Centric Portfolio
+  - Lead Deduplication: Dashboard now groups listings by host to avoid clutter.
+  - Host Explorer: In the details sheet, users can see ALL other properties from the same host.
+  - Quick Access: Tapping any property in the portfolio list opens its Airbnb page.
 
-[v2.3.5] UI Performance & Mass Selection
-  - Fixed Stream Bug: Stopped re-subscribing to Supabase on every checkbox toggle (eliminates flicker/reload).
-  - Select All: Added intelligent "Select All" / "Deselect All" button in the App Bar during Selection Mode.
-  - Context Aware: Select All only affects the leads currently visible in your filtered view.
+[v2.3.1] CRM Sales Funnel & Auto-Tracking
+  - Sales Pipeline: Formalized stages (Novo, Contatado, Respondeu, Interessado, Venda).
+  - Smart Tracking: Initiating a WhatsApp/Email/Airbnb msg automatically moves "Novo" leads to "Contatado".
+  - Stage Management: Added status chips in the detail view for manual stage transitions.
+
+[v2.3.3] Listing Manager & Lead Archive
+  - Archive Toggle: New icon in App Bar to switch between "Active Leads" and "Contacted Archive".
+  - Recovery System: Added a "Restaurar Lead" feature to rescue items from the archive.
+  - Cleanup: Separates the daily work list from the long-term sales funnel.
+
+[v2.3.4] Bulk Recovery & Data Integrity
+  - Mass Restore: Added "Restaurar Selecionados" action back to active list.
+  - Confirmation Prompt: Refined Auto-Contact to use a confirm/deny SnackBar to prevent false positives.
+
+[v2.5.0] Multi-Factor Lead Scoring (The "Whale" Algorithm)
+  - Scoring Overhaul: Replaced single-factor price ranking with a weighted composite model.
+  - Weighted Factors:
+    * Luxury Index (45%): High price relative to market.
+    * Scale Factor (25%): Portfolio size (larger hosts = more scale potential).
+    * Service Need (20%): Number of identified maintenance gaps.
+    * Professionalism (10%): Categorized host type (Company vs Person).
+  - High Intent Detection: Leads with high maintenance needs and large portfolios now soar to the top of the list.
 
 ================================================================================
-  Current Version: v2.3.5
+  Current Version: v2.5.0
   Git Range: HEAD
-  Last Updated: Feb 14, 2026 04:50 AM BRT
+  Last Updated: Feb 14, 2026 04:45 PM BRT
 ================================================================================
