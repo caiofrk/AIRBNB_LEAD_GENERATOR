@@ -78,26 +78,26 @@ COMPANY_KEYWORDS = [
 
 def categorize_host(name, portfolio_size):
     if not name:
-        return \"Person\"
+        return "Person"
     
     name_lower = name.lower()
     
     # Check portfolio size (strong indicator)
     if portfolio_size and portfolio_size > 2:
-        return \"Company\"
+        return "Company"
     
     # Check for company keywords
     for kw in COMPANY_KEYWORDS:
         if kw in name_lower:
-            return \"Company\"
+            return "Company"
             
     # Check word count
     words = name.split()
     if len(words) > 4:
-        return \"Company\"
+        return "Company"
     
     # DEFAULT
-    return \"Person\"
+    return "Person"
 
 # ──────────────────────────────────────────────
 # DEEP SCRAPE — visits a listing, gets everything
