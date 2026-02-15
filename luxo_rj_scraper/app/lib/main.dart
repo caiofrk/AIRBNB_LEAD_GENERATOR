@@ -598,7 +598,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: const Text(
-                          'v2.5.0',
+                          'v2.5.1',
                           style: TextStyle(fontSize: 10, color: Colors.white38),
                         ),
                       ),
@@ -930,11 +930,15 @@ class _DashboardPageState extends State<DashboardPage> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Text(
-                              '${lead['bairro'] ?? 'RJ'} • ${_currencyFormat.format(lead['preco_noite'] ?? 0)}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.white.withOpacity(0.5),
+                            Expanded(
+                              child: Text(
+                                '${lead['bairro'] ?? 'RJ'} • ${_currencyFormat.format(lead['preco_noite'] ?? 0)}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.white.withOpacity(0.5),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             if (lead['cleanliness_gap'] != null) ...[
@@ -945,7 +949,6 @@ class _DashboardPageState extends State<DashboardPage> {
                                 color: Colors.orange,
                               ),
                             ],
-                            const Spacer(),
                             if ((lead['host_portfolio_size'] ?? 1) > 1)
                               Container(
                                 margin: const EdgeInsets.only(left: 6),
