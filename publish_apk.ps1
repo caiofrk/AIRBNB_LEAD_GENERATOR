@@ -8,13 +8,20 @@ Set-Location $appDir
 flutter build apk --release --no-tree-shake-icons
 
 if ($LASTEXITCODE -eq 0) {
-    Copy-Item "build\app\outputs\flutter-apk\app-release.apk" "$rootDir\Airbnb-lead-gen.apk" -Force
+    # Extract version from pubspec.yaml
+    $pubspec = Get-Content "$appDir\pubspec.yaml" | Out-String
+    $version = ([regex]"version:\s*([0-9\.]+)").Match($pubspec).Groups[1].Value
+    
+    $destFile = "$rootDir\Airbnb-lead-gen-v$version.apk"
+    Copy-Item "build\app\outputs\flutter-apk\app-release.apk" $destFile -Force
+    
     Set-Location $rootDir
-    git add Airbnb-lead-gen.apk
-    git commit -m "Update APK"
+    git add $destFile
+    git commit -m "Update APK to v$version"
     git push
     Write-Host "--- SUCCESS ---"
-    Write-Host "Link: https://github.com/caiofrk/AIRBNB_LEAD_GENERATOR/raw/main/Airbnb-lead-gen.apk"
+    Write-Host "File: Airbnb-lead-gen-v$version.apk"
+    Write-Host "Link: https://github.com/caiofrk/AIRBNB_LEAD_GENERATOR/raw/main/Airbnb-lead-gen-v$version.apk"
 }
 else {
     Write-Host "--- FAILED ---"
