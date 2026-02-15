@@ -627,13 +627,38 @@ def deep_analyze_listing(driver, lead_id, url):
 # SEARCH — Discover new leads from neighborhoods
 # ──────────────────────────────────────────────
 def scrape_main_leads():
-    """Scrapes Airbnb search results for new leads."""
-    print("--- Running Main Scraper ---")
-    neighborhoods = [
-        "Ipanema", "Leblon", "Barra da Tijuca", "Joá", "São Conrado",
-        "Lagoa", "Copacabana", "Itanhangá", "Guaratiba", "Botafogo",
-        "Vargem Grande", "Vargem Pequena", "Ilha de Guaratiba"
+    """Scrapes Airbnb search results for new leads across multiple states."""
+    print("--- Running Multi-State Scraper (RJ, SP, MG, ES) ---")
+    
+    # Target high-end areas for luxury lead generation
+    targets = [
+        # RIO DE JANEIRO
+        {"bairro": "Ipanema (RJ)", "query": "Ipanema--Rio-de-Janeiro--RJ"},
+        {"bairro": "Leblon (RJ)", "query": "Leblon--Rio-de-Janeiro--RJ"},
+        {"bairro": "Barra/Joá (RJ)", "query": "Barra-da-Tijuca--Rio-de-Janeiro--RJ"},
+        {"bairro": "Angra dos Reis (RJ)", "query": "Angra-dos-Reis--RJ"},
+        {"bairro": "Búzios (RJ)", "query": "Búzios--RJ"},
+        {"bairro": "Região Serrana (RJ)", "query": "Petrópolis--RJ"},
+        
+        # SÃO PAULO
+        {"bairro": "Jardins/Itaim (SP)", "query": "Jardins--São-Paulo--SP"},
+        {"bairro": "Vila Nova Conceição (SP)", "query": "Vila-Nova-Conceição--São-Paulo--SP"},
+        {"bairro": "Litoral Norte (SP)", "query": "Ilhabela--SP"},
+        {"bairro": "Guarujá (SP)", "query": "Guarujá--SP"},
+        {"bairro": "Campos do Jordão (SP)", "query": "Campos-do-Jordão--SP"},
+        
+        # MINAS GERAIS
+        {"bairro": "BH Premium (MG)", "query": "Belo-Horizonte--MG"},
+        {"bairro": "Nova Lima (MG)", "query": "Nova-Lima--MG"},
+        {"bairro": "Escarpas/Capitólio (MG)", "query": "Escarpas-do-Lago--MG"},
+        {"bairro": "Tiradentes (MG)", "query": "Tiradentes--MG"},
+        
+        # ESPÍRITO SANTO
+        {"bairro": "Vitória/Vila Velha (ES)", "query": "Vitória--ES"},
+        {"bairro": "Guarapari (ES)", "query": "Guarapari--ES"},
+        {"bairro": "Região das Montanhas (ES)", "query": "Domingos-Martins--ES"}
     ]
+
     checkin_dt = datetime.now() + timedelta(days=14)
     checkout_dt = checkin_dt + timedelta(days=3)
     checkin = checkin_dt.strftime("%Y-%m-%d")
@@ -642,16 +667,32 @@ def scrape_main_leads():
 
     driver = get_desktop_driver()
     try:
-        for loc in neighborhoods:
-            print(f" 🔍 Neighborhood: {loc}")
-            url = (f"https://www.airbnb.com.br/s/{loc}--Rio-de-Janeiro--RJ/"
-                   f"homes?price_min=1000&room_types%5B%5D=Entire+home%2Fapt"
+        for target in targets:
+            loc_label = target["bairro"]
+            loc_query = target["query"]
+            
+            print(f" 🔍 Target: {loc_label}")
+            url = (f"https://www.airbnb.com.br/s/{loc_query}/homes"
+                   f"?price_min=1000&room_types%5B%5D=Entire+home%2Fapt"
                    f"&checkin={checkin}&checkout={checkout}")
+            
             driver.get(url)
             time.sleep(5)
 
+            # Handle possible "Show map" or "Filter" overlays that might block results
             soup = BeautifulSoup(driver.page_source, 'html.parser')
             listings = soup.select('div[data-testid="card-container"]')
+
+            if not listings:
+                print(f"    ⚠ No listings found for {loc_label}. Retrying with generic search...")
+                # Generic fallback if specific query fails
+                generic_query = loc_label.split(' (')[0].replace(' ', '-')
+                url_fallback = (f"https://www.airbnb.com.br/s/{generic_query}/homes"
+                                f"?price_min=1000&room_types%5B%5D=Entire+home%2Fapt")
+                driver.get(url_fallback)
+                time.sleep(5)
+                soup = BeautifulSoup(driver.page_source, 'html.parser')
+                listings = soup.select('div[data-testid="card-container"]')
 
             for item in listings[:20]:
                 try:
@@ -689,12 +730,12 @@ def scrape_main_leads():
                                 "titulo": title,
                                 "link_imovel": link,
                                 "preco_noite": price,
-                                "bairro": loc,
+                                "bairro": loc_label,
                                 "lux_score": get_lux_score(price, title, 30),
                                 "intelligence_status": "pending"
                             }
                             supabase.table("leads").insert(lead).execute()
-                            print(f"    [+] {title[:25]}...")
+                            print(f"    [+] {title[:25]}... ({loc_label})")
                 except:
                     continue
     finally:

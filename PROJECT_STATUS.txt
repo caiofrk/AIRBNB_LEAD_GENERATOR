@@ -147,16 +147,21 @@ NEXT STEPS (CRM EVOLUTION)
     * Professionalism (10%): Categorized host type (Company vs Person).
   - High Intent Detection: Leads with high maintenance needs and large portfolios now soar to the top of the list.
 
-
 [v2.5.1] Cloud Infrastructure & UI Polish
   - GCP VM Deployment: Watcher service successfully moved to Google Cloud Compute Engine.
   - Always-On Engine: Set up systemd service for 24/7 lead enrichment.
   - Layout Fix: Resolved right-overflow issue in lead cards by implementing flexible neighborhood/price labels.
   - Security Upgrade: Switched to service_role keys on server for unrestricted database access.
 
+[v2.6.0] Geographical Expansion (WIP)
+  - Multi-State Coverage: Expanded search clusters to cover the entire states of Rio de Janeiro (RJ), São Paulo (SP), Minas Gerais (MG), and Espírito Santo (ES).
+  - High-End Targeting: Implemented specific search logic for top luxury clusters (Jardins, Vila Nova Conceição, Escarpas do Lago, Búzios, etc.).
+  - Regional Labeling: Leads now include state markers (e.g., "Ipanema (RJ)", "Itaim Bibi (SP)") for easier filtering.
+
 ================================================================================
-  Current Version: v2.5.1
+  Current Version: v2.6.0 (WIP)
   Git Range: HEAD
-  Last Updated: Feb 15, 2026 01:00 AM BRT
+  Last Updated: Feb 15, 2026 04:00 PM BRT
 ================================================================================
+
 
