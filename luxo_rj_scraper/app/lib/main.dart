@@ -598,7 +598,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: const Text(
-                          'v2.5.1',
+                          'v2.6.0',
                           style: TextStyle(fontSize: 10, color: Colors.white38),
                         ),
                       ),

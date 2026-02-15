@@ -153,15 +153,16 @@ NEXT STEPS (CRM EVOLUTION)
   - Layout Fix: Resolved right-overflow issue in lead cards by implementing flexible neighborhood/price labels.
   - Security Upgrade: Switched to service_role keys on server for unrestricted database access.
 
-[v2.6.0] Geographical Expansion (WIP)
+[v2.6.0] Geographical Expansion
   - Multi-State Coverage: Expanded search clusters to cover the entire states of Rio de Janeiro (RJ), São Paulo (SP), Minas Gerais (MG), and Espírito Santo (ES).
   - High-End Targeting: Implemented specific search logic for top luxury clusters (Jardins, Vila Nova Conceição, Escarpas do Lago, Búzios, etc.).
   - Regional Labeling: Leads now include state markers (e.g., "Ipanema (RJ)", "Itaim Bibi (SP)") for easier filtering.
 
 ================================================================================
-  Current Version: v2.6.0 (WIP)
+  Current Version: v2.6.0
   Git Range: HEAD
-  Last Updated: Feb 15, 2026 04:00 PM BRT
+  Last Updated: Feb 15, 2026 05:30 PM BRT
 ================================================================================
+
 
 
