@@ -109,9 +109,6 @@ NEXT STEPS (CRM EVOLUTION)
      - New Rio neighborhoods
      - São Paulo, Florianópolis, etc.
 
-  2. Automated Follow-ups
-     - Notification system for 'Responded' leads.
-     - Scheduled reminders.
 [v2.0.9] Mass Messaging Implementation
   - Added "Selection Mode" to the CRM Dashboard.
   - Multi-select multiple hosts to initiate a sequence of sales pitches.
@@ -158,10 +155,16 @@ NEXT STEPS (CRM EVOLUTION)
   - High-End Targeting: Implemented specific search logic for top luxury clusters (Jardins, Vila Nova Conceição, Escarpas do Lago, Búzios, etc.).
   - Regional Labeling: Leads now include state markers (e.g., "Ipanema (RJ)", "Itaim Bibi (SP)") for easier filtering.
 
+[v2.7.0] Automated Follow-ups & Reminders
+  - Real-time Notifications: System push + SnackBar when a lead's status changes to 'Responded'.
+  - Scheduled Reminders: Integrated local notifications to prompt follow-ups in 2h, 24h, or 48h.
+  - Tracking: Session-based deduplication for status notifications.
+  - Stability: Updated notification logic for compatibility with Flutter 3.10+ and flutter_local_notifications 20.1+.
+
 ================================================================================
-  Current Version: v2.6.0
+  Current Version: v2.7.0
   Git Range: HEAD
-  Last Updated: Feb 15, 2026 05:30 PM BRT
+  Last Updated: Feb 15, 2026 06:35 PM BRT
 ================================================================================
 
 

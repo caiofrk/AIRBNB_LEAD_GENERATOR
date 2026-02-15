@@ -3,6 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:ui';
 import 'package:intl/intl.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 
@@ -13,6 +16,8 @@ Future<void> main() async {
     url: 'https://vfuhzvyfdivnmrlijtfi.supabase.co',
     anonKey: 'sb_publishable_eLUkti4w2kQDJu6kCQVrpA_4Pr7xt3H',
   );
+
+  await NotificationService.init();
 
   runApp(const MyApp());
 }
@@ -54,6 +59,8 @@ class _DashboardPageState extends State<DashboardPage> {
   String _pipelineFilter = 'Todos';
   bool _showArchived = false; // Toggle for "Contacted" view
   bool _useDeduplication = true; // NEW: Toggle for host grouping
+  final Set<String> _notifiedLeadIds =
+      {}; // Track which leads already triggered push
 
   late Stream<List<Map<String, dynamic>>> _leadsStream;
 
@@ -61,6 +68,42 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _leadsStream = _client.from('leads').stream(primaryKey: ['id']);
+    _setupFollowupListener();
+  }
+
+  void _setupFollowupListener() {
+    _client.from('leads').stream(primaryKey: ['id']).listen((leads) {
+      if (!mounted) return;
+      for (var lead in leads) {
+        final badges = lead['badges'] as List? ?? [];
+        if (badges.contains('status:Respondeu')) {
+          final id = lead['id'].toString();
+          if (!_notifiedLeadIds.contains(id)) {
+            _notifiedLeadIds.add(id);
+
+            // In-app SnackBar
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '🔥 NOVO CONTATO: ${lead['anfitriao'] ?? 'Anfitrião'} respondeu!',
+                ),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 5),
+              ),
+            );
+
+            // System Push
+            NotificationService.showInstant(
+              id: lead['id'].hashCode,
+              title: '🔥 Resposta Recebida!',
+              body:
+                  '${lead['anfitriao'] ?? 'Seu lead'} acabou de te responder!',
+            );
+          }
+        }
+      }
+    });
   }
 
   @override
@@ -1615,6 +1658,42 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
 
               const SizedBox(height: 32),
+              const Text(
+                'Lembretes de Follow-up',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildActionTile(
+                      Icons.notifications_active_outlined,
+                      'Em 2h',
+                      const Color(0xFF6366F1),
+                      () => _scheduleReminder(lead, 2),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildActionTile(
+                      Icons.notifications_paused_outlined,
+                      'Em 24h',
+                      Colors.amber,
+                      () => _scheduleReminder(lead, 24),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildActionTile(
+                      Icons.event_note,
+                      'Em 48h',
+                      Colors.greenAccent,
+                      () => _scheduleReminder(lead, 48),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: () {
                   if (lead['contatado'] == true) {
@@ -1719,6 +1798,60 @@ class _DashboardPageState extends State<DashboardPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildActionTile(
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return _AnimatedPress(
+      onTap: onTap,
+      child: Container(
+        height: 80,
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.1)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _scheduleReminder(Map<String, dynamic> lead, int hours) async {
+    final scheduledDate = DateTime.now().add(Duration(hours: hours));
+    await NotificationService.schedule(
+      id: lead['id'].hashCode + hours,
+      title: '⏰ Follow-up pendente',
+      body:
+          'Hora de cobrar uma resposta de ${lead['anfitriao'] ?? 'seu lead'}.',
+      scheduledDate: scheduledDate,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lembrete agendado para ${hours}h daqui.'),
+          backgroundColor: const Color(0xFF6366F1),
+        ),
+      );
+    }
   }
 
   Widget _buildActionButton(
@@ -2205,6 +2338,76 @@ class _AnimatedPressState extends State<_AnimatedPress> {
         curve: Curves.easeInOut,
         child: widget.child,
       ),
+    );
+  }
+}
+
+class NotificationService {
+  static final _notifications = FlutterLocalNotificationsPlugin();
+
+  static Future<void> init() async {
+    initializeTimeZones();
+    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const settings = InitializationSettings(android: android);
+
+    await _notifications.initialize(
+      settings: settings,
+      onDidReceiveNotificationResponse: (details) {
+        // Lógica ao clicar na notificação
+      },
+    );
+
+    await _notifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.requestNotificationsPermission();
+  }
+
+  static Future<void> showInstant({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'zai_followup',
+        'Zai Follow-up',
+        importance: Importance.max,
+        priority: Priority.high,
+        enableVibration: true,
+      ),
+    );
+    await _notifications.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: details,
+    );
+  }
+
+  static Future<void> schedule({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+  }) async {
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'zai_reminders',
+        'Zai Lembretes',
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+    );
+
+    await _notifications.zonedSchedule(
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: tz.TZDateTime.from(scheduledDate, tz.local),
+      notificationDetails: details,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     );
   }
 }
