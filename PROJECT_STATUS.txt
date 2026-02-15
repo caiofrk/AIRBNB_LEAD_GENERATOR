@@ -147,8 +147,16 @@ NEXT STEPS (CRM EVOLUTION)
     * Professionalism (10%): Categorized host type (Company vs Person).
   - High Intent Detection: Leads with high maintenance needs and large portfolios now soar to the top of the list.
 
+
+[v2.5.1] Cloud Infrastructure & UI Polish
+  - GCP VM Deployment: Watcher service successfully moved to Google Cloud Compute Engine.
+  - Always-On Engine: Set up systemd service for 24/7 lead enrichment.
+  - Layout Fix: Resolved right-overflow issue in lead cards by implementing flexible neighborhood/price labels.
+  - Security Upgrade: Switched to service_role keys on server for unrestricted database access.
+
 ================================================================================
-  Current Version: v2.5.0
+  Current Version: v2.5.1
   Git Range: HEAD
-  Last Updated: Feb 14, 2026 04:45 PM BRT
+  Last Updated: Feb 15, 2026 01:00 AM BRT
 ================================================================================
+
