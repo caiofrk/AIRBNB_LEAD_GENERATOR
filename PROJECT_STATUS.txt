@@ -161,10 +161,18 @@ NEXT STEPS (CRM EVOLUTION)
   - Tracking: Session-based deduplication for status notifications.
   - Stability: Updated notification logic for compatibility with Flutter 3.10+ and flutter_local_notifications 20.1+.
 
+[v2.7.1] Expansion Execution & Build Automation
+  - State Coverage: Discovery loop completed for RJ, SP, MG, and ES—database expanded from 94 to 345+ leads.
+  - Build Pipeline: Fixed Android AAR metadata conflicts and enabled Core Library Desugaring (JDK lib 2.1.4).
+  - Version Sync: Unified v2.7.0 branding across UI, pubspec, and local.properties.
+  - APK Auto-Versioning: Updated publish script to automatically name files (e.g., Airbnb-lead-gen-v2.7.0.apk) based on source version.
+  - Workspace Cleanup: Purged 30+ temporary JSON/HTML artifacts and legacy version APKs.
+  - Cloud Sync: Pushed latest data-type fixes to GCP Watcher Engine for stable background enrichment.
+
 ================================================================================
-  Current Version: v2.7.0
-  Git Range: HEAD
-  Last Updated: Feb 15, 2026 06:35 PM BRT
+  Current Version: v2.7.1
+  Leads in DB: 345 (305 Ready, 40 Pending)
+  Last Updated: Feb 16, 2026 05:30 AM BRT
 ================================================================================
 
 

@@ -63,7 +63,7 @@ def get_lux_score(price, title, photos_count, badges=None):
     if badges:
         if "Luxe" in badges: badge_pts = 10.0
         elif "Plus" in badges: badge_pts = 5.0
-    return round(price_pts + kw_pts + photo_pts + badge_pts, 1)
+    return int(round(price_pts + kw_pts + photo_pts + badge_pts, 0))
 
 # ──────────────────────────────────────────────
 # HOST CATEGORIZATION (Company vs Person)
@@ -677,11 +677,12 @@ def scrape_main_leads():
                    f"&checkin={checkin}&checkout={checkout}")
             
             driver.get(url)
-            time.sleep(5)
+            time.sleep(10)
 
             # Handle possible "Show map" or "Filter" overlays that might block results
             soup = BeautifulSoup(driver.page_source, 'html.parser')
             listings = soup.select('div[data-testid="card-container"]')
+            print(f"    ║ Found {len(listings)} listings")
 
             if not listings:
                 print(f"    ⚠ No listings found for {loc_label}. Retrying with generic search...")
@@ -736,7 +737,8 @@ def scrape_main_leads():
                             }
                             supabase.table("leads").insert(lead).execute()
                             print(f"    [+] {title[:25]}... ({loc_label})")
-                except:
+                except Exception as e:
+                    print(f"    ║ ❌ Error processing item: {e}")
                     continue
     finally:
         driver.quit()
