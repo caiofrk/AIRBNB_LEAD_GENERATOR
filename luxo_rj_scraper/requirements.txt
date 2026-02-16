@@ -4,4 +4,3 @@ requests
 supabase
 python-dotenv
 webdriver-manager
-google-genai
