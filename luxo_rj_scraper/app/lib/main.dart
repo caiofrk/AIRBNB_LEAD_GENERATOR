@@ -429,7 +429,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final selectedLeads = allLeads
         .where((l) => _selectedHostIds.contains(l['id']))
         .toList();
-    final TextEditingController _msgController = TextEditingController(
+    final TextEditingController msgController = TextEditingController(
       text:
           "Olá! Notei seu perfil e gostaria de conversar sobre consultoria para gestão de imóveis de luxo no Rio.",
     );
@@ -465,7 +465,7 @@ class _DashboardPageState extends State<DashboardPage> {
             Text(
               'Enviando para ${selectedLeads.length} contatos selecionados.',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withValues(alpha: 0.5),
                 fontSize: 13,
               ),
             ),
@@ -479,12 +479,12 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: _msgController,
+              controller: msgController,
               maxLines: 5,
               style: const TextStyle(color: Colors.white, fontSize: 14),
               decoration: InputDecoration(
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.05),
+                fillColor: Colors.white.withValues(alpha: 0.05),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
@@ -517,15 +517,14 @@ class _DashboardPageState extends State<DashboardPage> {
                   _selectedHostIds.clear();
                 });
 
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Iniciando envio para $sent hosts no Airbnb...',
-                      ),
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Iniciando envio para $sent hosts no Airbnb...',
                     ),
-                  );
-                }
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6366F1),
@@ -579,10 +578,12 @@ class _DashboardPageState extends State<DashboardPage> {
           decoration: BoxDecoration(
             color: isActive
                 ? const Color(0xFF6366F1)
-                : Colors.white.withOpacity(0.05),
+                : Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isActive ? Colors.white24 : Colors.white.withOpacity(0.1),
+              color: isActive
+                  ? Colors.white24
+                  : Colors.white.withValues(alpha: 0.1),
             ),
           ),
           child: Column(
@@ -641,7 +642,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: const Text(
-                          'v2.7.0',
+                          'v2.7.1',
                           style: TextStyle(fontSize: 10, color: Colors.white38),
                         ),
                       ),
@@ -653,7 +654,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       'Inteligência Imobiliária | powered by zaibatsu.tec',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.white.withOpacity(0.5),
+                        color: Colors.white.withValues(alpha: 0.5),
                       ),
                     ),
                   ),
@@ -735,26 +736,26 @@ class _DashboardPageState extends State<DashboardPage> {
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           ),
           child: TextField(
             onChanged: (value) => setState(() => _searchQuery = value),
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               hintText: 'Buscar imóveis ou bairros...',
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
               prefixIcon: Icon(
                 Icons.search,
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withValues(alpha: 0.3),
               ),
               suffixIcon: IconButton(
                 icon: Icon(
                   Icons.tune,
                   color: (_selectedBairro != 'Todos' || _sortBy != 'score')
                       ? const Color(0xFF6366F1)
-                      : Colors.white.withOpacity(0.3),
+                      : Colors.white.withValues(alpha: 0.3),
                 ),
                 onPressed: () => _showFilterSheet(allLeads),
               ),
@@ -792,7 +793,7 @@ class _DashboardPageState extends State<DashboardPage> {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF6366F1).withOpacity(0.3),
+                color: const Color(0xFF6366F1).withValues(alpha: 0.3),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -832,7 +833,10 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.8)),
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.white.withValues(alpha: 0.8),
+          ),
         ),
       ],
     );
@@ -842,7 +846,7 @@ class _DashboardPageState extends State<DashboardPage> {
     return Container(
       height: 30,
       width: 1,
-      color: Colors.white.withOpacity(0.2),
+      color: Colors.white.withValues(alpha: 0.2),
     );
   }
 
@@ -920,9 +924,9 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
@@ -978,7 +982,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 '${lead['bairro'] ?? 'RJ'} • ${_currencyFormat.format(lead['preco_noite'] ?? 0)}',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.white.withOpacity(0.5),
+                                  color: Colors.white.withValues(alpha: 0.5),
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -1000,7 +1004,9 @@ class _DashboardPageState extends State<DashboardPage> {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.greenAccent.withOpacity(0.15),
+                                  color: Colors.greenAccent.withValues(
+                                    alpha: 0.15,
+                                  ),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
@@ -1008,7 +1014,9 @@ class _DashboardPageState extends State<DashboardPage> {
                                   style: TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.greenAccent.withOpacity(0.9),
+                                    color: Colors.greenAccent.withValues(
+                                      alpha: 0.9,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1019,7 +1027,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                   timeAgo,
                                   style: TextStyle(
                                     fontSize: 10,
-                                    color: Colors.white.withOpacity(0.3),
+                                    color: Colors.white.withValues(alpha: 0.3),
                                   ),
                                 ),
                               ),
@@ -1052,7 +1060,7 @@ class _DashboardPageState extends State<DashboardPage> {
           : DateTime.parse(timestamp.toString()).toLocal();
       final diff = DateTime.now().difference(date);
 
-      if (diff.inDays > 7) return '${DateFormat('dd/MM').format(date)}';
+      if (diff.inDays > 7) return DateFormat('dd/MM').format(date);
       if (diff.inDays > 0) return '${diff.inDays}d atrás';
       if (diff.inHours > 0) return '${diff.inHours}h atrás';
       if (diff.inMinutes > 0) return '${diff.inMinutes}m atrás';
@@ -1074,7 +1082,7 @@ class _DashboardPageState extends State<DashboardPage> {
       height: 54,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: color.withOpacity(0.5), width: 2),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
       ),
       child: Center(
         child: Text(
@@ -1283,7 +1291,9 @@ class _DashboardPageState extends State<DashboardPage> {
                             labelStyle: TextStyle(
                               color: isSelected ? Colors.white : Colors.white60,
                             ),
-                            backgroundColor: Colors.white.withOpacity(0.05),
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.05,
+                            ),
                             showCheckmark: false,
                           ),
                         );
@@ -1303,7 +1313,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 lead['titulo'] ?? 'Imóvel',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.white.withOpacity(0.6),
+                  color: Colors.white.withValues(alpha: 0.6),
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -1313,7 +1323,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 '${lead['bairro']} • RJ',
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.white.withOpacity(0.35),
+                  color: Colors.white.withValues(alpha: 0.35),
                 ),
               ),
               const SizedBox(height: 24),
@@ -1348,9 +1358,11 @@ class _DashboardPageState extends State<DashboardPage> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.pink.withOpacity(0.1),
+                        color: Colors.pink.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.pink.withOpacity(0.3)),
+                        border: Border.all(
+                          color: Colors.pink.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: const Row(
                         children: [
@@ -1383,24 +1395,24 @@ class _DashboardPageState extends State<DashboardPage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.03),
+                        color: Colors.white.withValues(alpha: 0.03),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Colors.greenAccent.withOpacity(0.15),
+                          color: Colors.greenAccent.withValues(alpha: 0.15),
                         ),
                       ),
                       child: Row(
                         children: [
                           Icon(
                             Icons.apartment,
-                            color: Colors.greenAccent.withOpacity(0.7),
+                            color: Colors.greenAccent.withValues(alpha: 0.7),
                             size: 18,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             '$portfolioSize imóveis gerenciados',
                             style: TextStyle(
-                              color: Colors.greenAccent.withOpacity(0.9),
+                              color: Colors.greenAccent.withValues(alpha: 0.9),
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                             ),
@@ -1427,13 +1439,15 @@ class _DashboardPageState extends State<DashboardPage> {
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: isCurrent
-                                ? const Color(0xFF6366F1).withOpacity(0.1)
-                                : Colors.white.withOpacity(0.02),
+                                ? const Color(0xFF6366F1).withValues(alpha: 0.1)
+                                : Colors.white.withValues(alpha: 0.02),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: isCurrent
-                                  ? const Color(0xFF6366F1).withOpacity(0.3)
-                                  : Colors.white.withOpacity(0.05),
+                                  ? const Color(
+                                      0xFF6366F1,
+                                    ).withValues(alpha: 0.3)
+                                  : Colors.white.withValues(alpha: 0.05),
                             ),
                           ),
                           child: InkWell(
@@ -1464,7 +1478,9 @@ class _DashboardPageState extends State<DashboardPage> {
                                         '${listing['bairro']} • ${_currencyFormat.format(listing['preco_noite'] ?? 0)}',
                                         style: TextStyle(
                                           fontSize: 11,
-                                          color: Colors.white.withOpacity(0.4),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.4,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -1486,7 +1502,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             ),
                           ),
                         );
-                      }).toList(),
+                      }),
                     ],
                   ];
                 }
@@ -1712,7 +1728,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: lead['contatado'] == true
-                      ? Colors.green.withOpacity(0.1)
+                      ? Colors.green.withValues(alpha: 0.1)
                       : Colors.white10,
                   minimumSize: const Size(double.infinity, 56),
                   shape: RoundedRectangleBorder(
@@ -1745,7 +1761,10 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           Icon(icon, color: const Color(0xFF6366F1), size: 20),
           const SizedBox(width: 12),
-          Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5))),
+          Text(
+            label,
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+          ),
           const Spacer(),
           Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
         ],
@@ -1763,9 +1782,9 @@ class _DashboardPageState extends State<DashboardPage> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1788,7 +1807,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 Text(
                   value,
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 14,
                   ),
                 ),
@@ -1811,9 +1830,9 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Container(
         height: 80,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.05),
+          color: color.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.1)),
+          border: Border.all(color: color.withValues(alpha: 0.1)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1865,9 +1884,9 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
@@ -1894,7 +1913,7 @@ class _DashboardPageState extends State<DashboardPage> {
             Icon(
               isError ? Icons.cloud_off : Icons.auto_awesome,
               size: 80,
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
             ),
             const SizedBox(height: 24),
             Text(
@@ -1910,7 +1929,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ? 'Verifique os parâmetros de conexão do Supabase.'
                   : 'Tente buscar por outro bairro ou nome de imóvel.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white.withOpacity(0.5)),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
             ),
           ],
         ),
@@ -2244,7 +2263,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     style: TextStyle(fontSize: 11, color: Colors.white38),
                   ),
                   value: _useDeduplication,
-                  activeColor: const Color(0xFF6366F1),
+                  activeThumbColor: const Color(0xFF6366F1),
                   onChanged: (val) {
                     setState(() => _useDeduplication = val);
                     setModalState(() {});
@@ -2296,7 +2315,7 @@ class _DashboardPageState extends State<DashboardPage> {
       },
       selectedColor: const Color(0xFF6366F1),
       labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.white70),
-      backgroundColor: Colors.white.withOpacity(0.05),
+      backgroundColor: Colors.white.withValues(alpha: 0.05),
       showCheckmark: false,
     );
   }
