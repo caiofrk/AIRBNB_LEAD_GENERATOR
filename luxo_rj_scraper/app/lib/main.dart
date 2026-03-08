@@ -2441,6 +2441,20 @@ class NotificationService {
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
+  Future<bool> _checkIfAllowed(String email) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('allowed_users')
+          .select()
+          .eq('email', email.toLowerCase())
+          .maybeSingle();
+
+      return response != null;
+    } catch (e) {
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<AuthState>(
@@ -2456,11 +2470,110 @@ class AuthGate extends StatelessWidget {
 
         final session = snapshot.data?.session;
         if (session != null) {
-          return const DashboardPage();
+          final email = session.user.email;
+          if (email == null) return const LoginPage();
+
+          return FutureBuilder<bool>(
+            future: _checkIfAllowed(email),
+            builder: (context, allowedSnapshot) {
+              if (allowedSnapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(color: Color(0xFF6366F1)),
+                  ),
+                );
+              }
+
+              if (allowedSnapshot.data == true) {
+                return const DashboardPage();
+              } else {
+                return const AccessDeniedPage();
+              }
+            },
+          );
         }
 
         return const LoginPage();
       },
+    );
+  }
+}
+
+class AccessDeniedPage extends StatelessWidget {
+  const AccessDeniedPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final userEmail = Supabase.instance.client.auth.currentUser?.email ?? '';
+
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.lock_person,
+                    size: 80,
+                    color: Colors.redAccent,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                const Text(
+                  'Acesso Negado',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'O e-mail $userEmail não está autorizado a acessar esta ferramenta.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Entre em contato com o administrador para solicitar acesso.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white38, fontSize: 13),
+                ),
+                const SizedBox(height: 48),
+                ElevatedButton(
+                  onPressed: () => Supabase.instance.client.auth.signOut(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: 0.05),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(color: Colors.white10),
+                    ),
+                  ),
+                  child: const Text('Voltar ao Login'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
